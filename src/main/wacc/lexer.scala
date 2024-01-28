@@ -1,13 +1,13 @@
 package wacc
 
 import parsley.Parsley
+import parsley.token.Lexer
+import parsley.token.descriptions._
+import parsley.token.predicate.{Unicode, Basic}
 
+import parsley.character.newline
 
-object lexer {
-    import parsley.token.Lexer
-    import parsley.token.descriptions._
-    import parsley.token.predicate.{Unicode, Basic}
-    import parsley.character.newline
+object lexer{
 
     private val desc = LexicalDesc.plain.copy(
         NameDesc.plain.copy(
@@ -22,22 +22,22 @@ object lexer {
             hardOperators = Set("$", "||", "&&", "<", "<=", ">", ">=", "==", "!=", "/",
                             "+", "-", "*", "%"),
         ),
-        NumbericDesc = NumbericDesc.plain
-        TextDesc.plain.copy(
-            escapeSequences = EscapeDesc.copy(
-                escBegin = '\\'
-                mappings = Map("0'" -> 0x00,
+        numeric.NumericDesc.plain,
+        text.TextDesc.plain.copy(
+            escapeSequences = text.EscapeDesc.plain.copy(
+                escBegin = '\\',
+                mapping  = Map("0'" -> 0x00,
                             "b" -> 0x08,
                             "t" -> 0x09,
                             "n" -> 0x0a,
                             "f" -> 0x0c,
                             "r" -> 0x0d,
-                            '"' -> 0x22,
+                            "\""-> 0x22,
                             "'" -> 0x27,
-                            "\'" -> 0x5c,)
-            )
-            graphicCharacter = predicate.Basic(c => {
-                !Set('\'', "'", '"') && c >= ' '
+                            "\'" -> 0x5c)
+            ),
+            graphicCharacter = Basic(c => {
+                !Set('\'', "'", '\"').contains(c) && c >= ' ' 
                 }
             )
         ),
@@ -48,11 +48,12 @@ object lexer {
     )
     private val lexer = new Lexer(desc)
 
-    val INTEGER = lexer.lexeme.integer.decimal32.label("Integer lit")
+    val INTEGER = lexer.lexeme.integer.decimal64[BigInt]
     val IDENT = lexer.lexeme.names.identifier
     val STRING = lexer.lexeme.string.ascii
     val CHAR = lexer.lexeme.character.ascii
-    val BOOL = lexer.lexeme(attempt("true" #> true <|> "false" #> false))
+    //val BOOL = lexer.lexeme(attempt("true" #> true <|> "false" #> false)).
+    val BOOL = lexer.lexeme(bool).void
     val NEWLINE = lexer.lexeme(newline).void
 
     def fully[A](p: Parsley[A]): Parsley[A] = lexer.fully(p)

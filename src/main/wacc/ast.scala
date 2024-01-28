@@ -1,3 +1,5 @@
+package wacc
+
 object ast {
     import parsley.generic._
 
@@ -23,11 +25,10 @@ object ast {
     case class Neg(x: Expr)(val pos: (Int, Int)) extends Expr
     case class Len(x: Expr)(val pos: (Int, Int)) extends Expr
     case class Ord(x: Expr)(val pos: (Int, Int)) extends Expr
-    case class CharLit(x: Expr)(val pos: (Int, Int)) extends Expr
 
     //Atom
     case class IntLit(x: BigInt) extends Expr
-    case class BoolLit(x: Bool) extends Expr
+    case class BoolLit(x: Boolean) extends Expr
     case class CharLit(x: Char) extends Expr
     case class StrLit(x: String) extends Expr
     case class PairLit(x: BigInt) extends Expr
@@ -58,7 +59,7 @@ object ast {
 
     sealed trait Type
 
-    sealed trait
+    //sealed trait 
 
     object Div extends ParserBridge2[Expr, Expr, Expr]
     object Mod extends ParserBridge2[Expr, Expr, Expr]
@@ -79,7 +80,7 @@ object ast {
     object Len extends ParserBridge1[Expr, Expr]
     object Ord extends ParserBridge1[Expr, Expr]
     object CharLit extends ParserBridge1[Expr, Expr]
-    object IntLit extends ParserBridge1[Expr, Expr]
+    object IntLit extends ParserBridge1[Expr, Int]
     object BoolLit extends ParserBridge1[Expr, Expr]
     object Char extends ParserBridge1[Expr, Expr]
     object StrLit extends ParserBridge1[Expr, Expr]
