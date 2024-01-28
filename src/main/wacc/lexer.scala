@@ -52,6 +52,7 @@ object lexer {
     val IDENT = lexer.lexeme.names.identifier
     val STRING = lexer.lexeme.string.ascii
     val CHAR = lexer.lexeme.character.ascii
+    val BOOL = lexer.lexeme(attempt("true" #> true <|> "false" #> false))
     val NEWLINE = lexer.lexeme(newline).void
 
     def fully[A](p: Parsley[A]): Parsley[A] = lexer.fully(p)
