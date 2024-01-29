@@ -37,7 +37,7 @@ object lexer{
                             "\'" -> 0x5c)
             ),
             graphicCharacter = Basic(c => {
-                !Set('\'', "'", '\"').contains(c) && c >= ' ' 
+                !Set('\'', "'", '\"').contains(c) && c >= ' '
                 }
             )
         ),
@@ -48,12 +48,13 @@ object lexer{
     )
     private val lexer = new Lexer(desc)
 
-    val INTEGER = lexer.lexeme.integer.decimal64[BigInt]
+    val INTEGER = lexer.lexeme.integer.decimal32[BigInt]
     val IDENT = lexer.lexeme.names.identifier
     val STRING = lexer.lexeme.string.ascii
     val CHAR = lexer.lexeme.character.ascii
-    //val BOOL = lexer.lexeme(attempt("true" #> true <|> "false" #> false)).
-    val BOOL = lexer.lexeme(bool).void
+    val BOOL = ((lexer.lexeme.symbol.apply("true", "true") #> true) <|>
+    (lexer.lexeme.symbol.apply("false", "false") #> false))
+    // val BOOL = lexer.lexeme(bool).void
     val NEWLINE = lexer.lexeme(newline).void
 
     def fully[A](p: Parsley[A]): Parsley[A] = lexer.fully(p)

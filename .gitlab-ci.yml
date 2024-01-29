@@ -1,4 +1,0 @@
-stage:
-  - compile
-  - test
-  - deploy
