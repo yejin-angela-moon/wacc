@@ -34,23 +34,23 @@ object ast {
     case class StrLit(x: String) extends Expr
     case class Ident(x: String) extends Expr with Lvalue
     case class ArrayElem(x: Expr) extends Expr with Lvalue
+
     sealed trait PairLit extends Expr
     case class Null() extends PairLit with ParserBridge0[PairLit]
 
-    sealed trait Stmt
-
     //Program
-    case class Program(func: Func, body: Stmt) extends Stmt
+    case class Program(func: Func, body: Stmt)
 
     //Function
-    case class Func(t: Type, ident: Ident, list: ParamList, body: Stmt) extends Stmt
-
+    case class Func(t: Type, ident: Ident, list: ParamList, body: Stmt)
+    
     //Parameter List
-    case class ParamList(params: List[Param]) extends Stmt
-
+    case class ParamList(params: List[Param])
+    
     //Parameter
-    case class Param(t: Type, ident: Ident) extends Stmt
-
+    case class Param(t: Type, ident: Ident)
+    
+    sealed trait Stmt
     //Statements
     case object Skip extends Stmt with ParserBridge0[Stmt]
     case class Declare(t: Type, ident: Ident, rvalue: Rvalue) extends Stmt
@@ -67,7 +67,7 @@ object ast {
     case class StmtList(s1: Stmt, s2: Stmt) extends Stmt
 
     //Lvalue
-    sealed trait Lvalue extends Stmt
+    sealed trait Lvalue
 
     //Rvalue
     sealed trait Rvalue
