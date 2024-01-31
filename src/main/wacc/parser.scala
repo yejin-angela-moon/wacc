@@ -55,7 +55,7 @@ object Expression {
 
 object parser {
 
-    // def parse(expr: String): Result[+Err, +A] =  ???
+    def parse(expr: String): Result[String, BigInt] = parser.parse(expr)
 
     private val parser = fully(expr)
 
