@@ -16,12 +16,12 @@ import TypeParser._
 import StatementParser._
 
 object ExpressionParser {
-    lazy val `<int-liter>`  = IntLit(INTEGER)
+    lazy val `<int-liter>` = IntLit(INTEGER)
     lazy val `<bool-liter>` = BoolLit(BOOL)
     lazy val `<char-liter>` = CharLit(CHAR)
-    lazy val `<str-liter>`  = StrLit(STRING)
-    lazy val `<ident>`      = Ident(IDENT)
-    lazy val `<array-elem>` : Parsley[ArrayElem] = ArrayElem(`<ident>`, some("(" ~> `<expr>` <~ ")"))
+    lazy val `<str-liter>` = StrLit(STRING)
+    lazy val `<ident>` = Ident(IDENT)
+    lazy val `<array-elem>` = ArrayElem(`<ident>`, some("[" ~> `<expr>` <~ "]"))
 
     lazy val `<atom>`: Parsley[Expr] =
         (`<int-liter>`  |
@@ -32,17 +32,24 @@ object ExpressionParser {
         `<ident>` | `<array-elem>`)
 
 
-    lazy val `<expr>`: Parsley[Expr] = precedence {
+
+     lazy val `<expr>`: Parsley[Expr] = precedence (
         SOps(InfixR)(Or     from "||") +:
+        SOps(InfixR)(And    from "&&") +:
         SOps(InfixN)(LT     from "<",   LTE     from "<=",
                      GT     from ">",   GTE     from ">=",
                      E      from "==",  NE      from "!=") +:
-        SOps(Prefix)(Not    from "!") +:
+        SOps(InfixL)(Mod    from "%") +:
+        SOps(InfixL)(Add    from "+",   Sub     from "-") +:
         SOps(Prefix)(Neg    from "-") +:
+        SOps(Prefix)(Not    from "!") +:
+        SOps(InfixL)(Mul    from "*",   Div     from "/") +:
         SOps(Prefix)(Len    from "len", Ord     from "ord",
                      Chr    from "chr") +:
         Atoms(`<atom>`)
-    }
+    )
+
+
 }
 
 object TypeParser {
@@ -61,8 +68,7 @@ object TypeParser {
     // TO BE MODIFIED 
     lazy val `<array-type>` : Parsley[ArrayType] = ArrayType(`<type>` <~ "[]")
 
-    lazy val `<pair-type>` : Parsley[PairType] = PairType("pair" ~> "(" ~> `<pair-elem-type>`, "," ~>
-        `<pair-elem-type>` <~ ")")
+    lazy val `<pair-type>` : Parsley[PairType] = PairType("pair" ~> "(" ~> `<pair-elem-type>`, "," ~> `<pair-elem-type>` <~ ")")
 
     lazy val `<pair-elem-type>` : Parsley[PairElemType] = 
         (PairElemType2(`<base-type>`)  |
@@ -124,13 +130,19 @@ object StatementParser {
 object parser {
     import parsley.Parsley
     import parsley.{Result, Success, Failure}
-    import ExpressionParser._
     import lexer._
 
-    def parse(prog: String): Result[String, Stmt] = {
-        fully(`<prog>`).parse(prog) match {
+    def parse(expr: String): Result[String, Expr] = {
+        fully(`<expr>`).parse(expr) match {
             case Success(result) => Success(result)
             case Failure(error) => Failure(error.toString)
         }
     }
+
+    // def parse(prog: String): Result[String, Stmt] = {
+    //     fully(`<prog>`).parse(prog) match {
+    //         case Success(result) => Success(result)
+    //         case Failure(error) => Failure(error.toString)
+    //     }
+    // }
 }

@@ -37,8 +37,7 @@ object lexer{
                             "\'" -> 0x5c)
             ),
             graphicCharacter = Basic(c => {
-                !Set('\'', "'", '\"').contains(c) && c >= ' '
-                }
+                !Set('\'', "'", '\"').contains(c) && c >= ' '}
             )
         ),
         SpaceDesc.plain.copy(
