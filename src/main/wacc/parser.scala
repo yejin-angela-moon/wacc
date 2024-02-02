@@ -14,10 +14,6 @@ import ast._
 import ExpressionParser._
 import TypeParser._
 import StatementParser._
-import TypeParser._
-import FuncParser._
-import LvalueParser._
-import RvalueParser._
 
 object ExpressionParser {
     lazy val `<int-liter>`  = IntLit(INTEGER)
@@ -25,7 +21,7 @@ object ExpressionParser {
     lazy val `<char-liter>` = CharLit(CHAR)
     lazy val `<str-liter>`  = StrLit(STRING)
     lazy val `<ident>`      = Ident(IDENT)
-    lazy val `<array-elem>` = ArrayElem(`<ident>`, some("(" ~> `<expr>` <~ ")"))
+    lazy val `<array-elem>` : Parsley[ArrayElem] = ArrayElem(`<ident>`, some("(" ~> `<expr>` <~ ")"))
 
     lazy val `<atom>`: Parsley[Expr] =
         (`<int-liter>`  |
@@ -50,41 +46,41 @@ object ExpressionParser {
 }
 
 object TypeParser {
-    lazy val `<type>` =
-        (`<base-type>` <|>
-        `<array-type>`
-        )
 
+    lazy val `<type>`: Parsley[Type] =
+        `<base-type>`  <|>
+        `<array-type>` <|>
+        `<pair-type>`
+        
+    lazy val `<base-type>` : Parsley[BaseType] = 
+        (IntType <# atomic("int") |
+        BoolType <# "bool"       |
+        CharType <# "char"       |
+        StringType <# "string")
 
-    lazy val `<base-type>` = (IntType <# "int" |
-                             BoolType <# "bool" |
-                             CharType <# "char" |
-                             StringType <# "string")
+    // TO BE MODIFIED 
+    lazy val `<array-type>` : Parsley[ArrayType] = ArrayType(`<type>` <~ "[]")
 
-    lazy val `<array-type>` = ArrayType <# "[]"
-
-    lazy val `<pair-type>` = PairType("pair" ~> "(" ~> `<pair-elem-type>`, "," ~>
+    lazy val `<pair-type>` : Parsley[PairType] = PairType("pair" ~> "(" ~> `<pair-elem-type>`, "," ~>
         `<pair-elem-type>` <~ ")")
 
-    lazy val `<pair-elem-type>` = (`<base-type>` | `<array-type>` | `<pair-type>`)
+    lazy val `<pair-elem-type>` : Parsley[PairElemType] = 
+        (PairElemType2(`<base-type>`)  |
+         PairElemType2(`<array-type>`) | 
+         PairElemType1 <# "pair")
 }
 
-object LvalueParser {
-    lazy val `<lvalue>` = (
-        `<ident>` <|> `<array-elem>` <|> `<pair-elem>`
-    )
-}
-
-object RvalueParser {
-    lazy val `<rvalue>` = (
-        `<expr>` | `<array-liter>` |
-        NewPair("newpair" ~> "(" ~> `<expr>` <~ ",", `<expr>` <~ ")") |
-        `<pair-elem>` |
-        Call("call" ~> `<ident>`, "(" ~> option(`<arg-list>`) <~ ")")
-    )
-}
 
 object StatementParser {
+
+    lazy val `<prog>` : Parsley[Program] = Program("begin" ~> many(`<func>`), `<stmt>` <~ "end")
+
+    lazy val `<func>` : Parsley[Func] = Func(`<type>`, `<ident>`,
+                        "(" ~> `<param-list>` <~ ")",
+                        "is" ~> `<stmt>` <~ "end")
+
+    lazy val `<param-list>` : Parsley[ParamList] = ParamList(sepBy(`<param>`, ","))
+    lazy val `<param>` : Parsley[Param] = Param(`<type>`, `<ident>`)
 
     lazy val `<stmt>`: Parsley[Stmt] = (
         Skip from "skip" |
@@ -102,41 +98,39 @@ object StatementParser {
         StmtList(`<stmt>`, ";" ~> `<stmt>`)
     )
 
-}
+    lazy val `<lvalue>` : Parsley[Lvalue] = 
+        `<ident>`      <|> 
+        `<array-elem>` <|>
+        `<pair-elem>`
 
-object ProgramParser {
-    lazy val `<prog>` = fully(Program("begin" ~> many(`<func>`), `<stmt>` <~ "end"))
-}
+    lazy val `<rvalue>` : Parsley[Rvalue] = (
+        `<expr>` | `<array-liter>` |
+        NewPair("newpair" ~> "(" ~> `<expr>` <~ ",", `<expr>` <~ ")") |
+        `<pair-elem>` |
+        Call("call" ~> `<ident>`, "(" ~> option(`<arg-list>`) <~ ")")
+    )
 
-object FuncParser {
-    lazy val `<func>` = Func(`<type>`, `<ident>`,
-                        "(" ~> `<param-list>` <~ ")",
-                        "is" ~> `<stmt>` <~ "end")
 
-    lazy val `<param-list>` = ParamList(sepBy(`<param>`, ","))
-    lazy val `<param>` = Param(`<type>`, `<ident>`)
+    lazy val `<pair-elem>` : Parsley[PairElem] = 
+       Fst("fst" ~> `<lvalue>`) <|>
+       Snd("snd" ~> `<lvalue>`)
+
+    lazy val `<array-liter>` : Parsley[ArrayLit] = ArrayLit( "[" ~> option("(" ~> sepBy1(`<expr>`, ",") <~ ")") <~ "]")
+
+    lazy val `<arg-list>` : Parsley[ArgList] = ArgList(sepBy1(`<expr>`, ","))
+
 }
 
 object parser {
     import parsley.Parsley
     import parsley.{Result, Success, Failure}
-    import Expression._
+    import ExpressionParser._
     import lexer._
 
-    def parse(expr: String): Result[String, Expr] = {
-        fully(`<expr>`).parse(expr) match {
+    def parse(prog: String): Result[String, Stmt] = {
+        fully(`<prog>`).parse(prog) match {
             case Success(result) => Success(result)
             case Failure(error) => Failure(error.toString)
         }
     }
-
-    // private val parser = fully(expr)
-
-    // private val add = (x: BigInt, y: BigInt) => x + y
-    // private val sub = (x: BigInt, y: BigInt) => x - y
-
-    // private lazy val expr: Parsley[BigInt] =
-    //     chain.left1(INTEGER | "(" ~> expr <~ ")")(
-    //         ("+" as add) | ("-" as sub) 
-    //     )
 }
