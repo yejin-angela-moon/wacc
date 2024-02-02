@@ -33,13 +33,15 @@ object ast {
     case class CharLit(x: Char) extends Expr
     case class StrLit(x: String) extends Expr
     case class Ident(x: String) extends Expr with Lvalue
-    case class ArrayElem(x: Expr) extends Expr with Lvalue
+    case class ArrayElem(ident: Ident, x: List[Expr]) extends Expr with Lvalue
 
-    sealed trait PairLit extends Expr
-    case class Null() extends PairLit with ParserBridge0[PairLit]
+    // sealed trait PairLit extends Expr
+    // case class Null() extends PairLit with ParserBridge0[PairLit]
+
+    case object PairLit extends Expr with ParserBridge0[Expr]
 
     //Program
-    case class Program(func: Func, body: Stmt)
+    case class Program(funcs: List[Func], body: Stmt)
 
     //Function
     case class Func(t: Type, ident: Ident, list: ParamList, body: Stmt)
@@ -86,14 +88,14 @@ object ast {
     sealed trait BaseType extends Type with PairElemType
 
     case class ArrayType(t: Type) extends Type with PairElemType
-    case object PairType extends Type with ParserBridge0[Type]
+    case class PairType(p1: PairElemType, p2: PairElemType) extends Type
 
     sealed trait PairElemType extends Type
 
-    case class IntType(x: BigInt) extends BaseType
-    case class BoolType(x: Boolean) extends BaseType
-    case class CharType(x: Char) extends BaseType
-    case class StringType(x: String) extends BaseType
+    case object IntType extends Type with ParserBridge0[Type]
+    case object BoolType extends Type with ParserBridge0[Type]
+    case object CharType extends Type with ParserBridge0[Type]
+    case object StringType extends Type with ParserBridge0[Type]
 
     object Div extends ParserBridge2[Expr, Expr, Expr]
     object Mod extends ParserBridge2[Expr, Expr, Expr]
@@ -119,9 +121,10 @@ object ast {
     object BoolLit extends ParserBridge1[Boolean, BoolLit]
     object StrLit extends ParserBridge1[String, StrLit]
     object Ident extends ParserBridge1[String, Ident]
-    object ArrayElem extends ParserBridge1[Expr, Expr]
+    object ArrayElem extends ParserBridge2[Ident, List[Expr], Expr]
+    object PairType extends ParserBridge2[PairElemType, PairElemType, PairType]
 
-    object Program extends ParserBridge2[Func, Stmt, Program]
+    object Program extends ParserBridge2[List[Func], Stmt, Program]
     object Func extends ParserBridge4[Type, Ident, ParamList, Stmt, Func]
     object ParamList extends ParserBridge1[List[Param], ParamList]
     object Param extends ParserBridge2[Type, Ident, Param]
@@ -149,8 +152,8 @@ object ast {
 
     object ArrayType extends ParserBridge1[Type, ArrayType]
 
-    object IntType extends ParserBridge1[BigInt, IntType]
-    object BoolType extends ParserBridge1[Boolean, BoolType]
-    object CharType extends ParserBridge1[Char, CharType]
-    object StringType extends ParserBridge1[String, StringType]
+    // object IntType extends ParserBridge0[BigInt, IntType]
+    // object BoolType extends ParserBridge1[Boolean, BoolType]
+    // object CharType extends ParserBridge1[Char, CharType]
+    // object StringType extends ParserBridge1[String, StringType]
 }
