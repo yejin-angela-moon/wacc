@@ -6,10 +6,12 @@ all:
 # the --force flag ensures that any existing built compiler is overwritten
 # the --power flag is needed as `package` is an experimental "power user" feature
 	scala-cli --power package . --server=false --jvm system --force -o wacc-compiler
-	sbt compile
-	sbt package
+	# sbt compile
+	# sbt package
+	sbt assembly
 
 clean:
 	scala-cli clean . && rm -f wacc-compiler
+	sbt clean
 
 .PHONY: all clean
