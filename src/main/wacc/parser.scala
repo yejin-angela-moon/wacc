@@ -38,18 +38,14 @@ object ExpressionParser {
 
     lazy val `<expr>`: Parsley[Expr] = precedence {
         SOps(InfixR)(Or     from "||") +:
-        SOps(InfixR)(And    from "&&") +:
         SOps(InfixN)(LT     from "<",   LTE     from "<=",
                      GT     from ">",   GTE     from ">=",
                      E      from "==",  NE      from "!=") +:
-        SOps(InfixL)(Mod    from "%") +:
-        SOps(InfixL)(Add    from "+",   Sub     from "-") +:
-        SOps(Prefix)(Neg    from "-") +:
         SOps(Prefix)(Not    from "!") +:
-        SOps(InfixL)(Mul    from "*",   Div     from "/") +:
+        SOps(Prefix)(Neg    from "-") +:
         SOps(Prefix)(Len    from "len", Ord     from "ord",
                      Chr    from "chr") +:
-        Atoms(`<int-liter>`)
+        Atoms(`<atom>`)
     }
 }
 
@@ -122,16 +118,25 @@ object FuncParser {
 }
 
 object parser {
+    import parsley.Parsley
+    import parsley.{Result, Success, Failure}
+    import Expression._
+    import lexer._
 
-    // def parse(expr: String): Result[+Err, +A] =  ???
+    def parse(expr: String): Result[String, Expr] = {
+        fully(`<expr>`).parse(expr) match {
+            case Success(result) => Success(result)
+            case Failure(error) => Failure(error.toString)
+        }
+    }
 
-    val parser = fully(expr)
+    // private val parser = fully(expr)
 
-    val add = (x: BigInt, y: BigInt) => x + y
-    val sub = (x: BigInt, y: BigInt) => x - y
+    // private val add = (x: BigInt, y: BigInt) => x + y
+    // private val sub = (x: BigInt, y: BigInt) => x - y
 
-    lazy val expr: Parsley[BigInt] =
-        chain.left1(INTEGER | "(" ~> expr <~ ")")(
-            ("+" as add) | ("-" as sub)
-        )
+    // private lazy val expr: Parsley[BigInt] =
+    //     chain.left1(INTEGER | "(" ~> expr <~ ")")(
+    //         ("+" as add) | ("-" as sub) 
+    //     )
 }

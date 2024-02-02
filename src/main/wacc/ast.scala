@@ -6,19 +6,19 @@ object ast {
     sealed trait Expr extends Rvalue
 
     //Binary Operator
+    case class Add(x: Expr, y: Expr) extends Expr
+    case class Sub(x: Expr, y: Expr) extends Expr
+    case class Mul(x: Expr, y: Expr) extends Expr
     case class Div(x: Expr, y: Expr) extends Expr
     case class Mod(x: Expr, y: Expr) extends Expr
-    case class Add(x: Expr, y: Expr) extends Expr
-    case class Mul(x: Expr, y: Expr) extends Expr
-    case class Sub(x: Expr, y: Expr) extends Expr
-    case class GT(x: Expr, y: Expr) extends Expr
-    case class GTE(x: Expr, y: Expr) extends Expr
-    case class LT(x: Expr, y: Expr) extends Expr
-    case class LTE(x: Expr, y: Expr) extends Expr
-    case class E(x: Expr, y: Expr) extends Expr
-    case class NE(x: Expr, y: Expr) extends Expr
     case class And(x: Expr, y: Expr) extends Expr
     case class Or(x: Expr, y: Expr) extends Expr
+    case class LT(x: Expr, y: Expr) extends Expr
+    case class LTE(x: Expr, y: Expr) extends Expr    
+    case class GT(x: Expr, y: Expr) extends Expr
+    case class GTE(x: Expr, y: Expr) extends Expr
+    case class E(x: Expr, y: Expr) extends Expr
+    case class NE(x: Expr, y: Expr) extends Expr
 
     //Unary Operator
     case class Not(x: Expr) extends Expr
