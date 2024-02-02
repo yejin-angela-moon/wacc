@@ -24,7 +24,6 @@ object Main {
                     case Success(result) => 
                         println(s"$input = $result")
                     case Failure(msg) => 
-                        println(msg)
                         println("Exiting with code 100 due to syntax error")
                         System.exit(100)
                 }

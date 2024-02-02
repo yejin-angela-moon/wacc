@@ -34,8 +34,9 @@ object ast {
     case class StrLit(x: String) extends Expr
     case class Ident(x: String) extends Expr with Lvalue
     case class ArrayElem(ident: Ident, x: List[Expr]) extends Expr with Lvalue
+    case class Paran(x: Expr) extends Expr
 
-    // sealed trait PairLit extends Expr
+    // sealed trait PairLit extends Expr 
     // case class Null() extends PairLit with ParserBridge0[PairLit]
 
     case object PairLit extends Expr with ParserBridge0[Expr]

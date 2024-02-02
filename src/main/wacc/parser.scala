@@ -22,6 +22,7 @@ object ExpressionParser {
     lazy val `<str-liter>` = StrLit(STRING)
     lazy val `<ident>` = Ident(IDENT)
     lazy val `<array-elem>` = ArrayElem(`<ident>`, some("[" ~> `<expr>` <~ "]"))
+    // lazy val `<paran>` : Parsley[Expr] = Paran("(" ~> `<expr>` <~ ")")
 
     lazy val `<atom>`: Parsley[Expr] =
         (`<int-liter>`  |
@@ -29,7 +30,8 @@ object ExpressionParser {
         `<char-liter>`  |
         `<str-liter>`   |
         PairLit <# "null" |
-        `<ident>` | `<array-elem>`)
+        `<ident>` | `<array-elem>` )
+        // `<paran>`)
 
 
 
@@ -54,19 +56,19 @@ object ExpressionParser {
 
 object TypeParser {
 
-    lazy val `<type>`: Parsley[Type] =
+    lazy val `<type>` =
         `<base-type>`  <|>
         `<array-type>` <|>
         `<pair-type>`
         
-    lazy val `<base-type>` : Parsley[BaseType] = 
-        (IntType <# atomic("int") |
+    lazy val `<base-type>` = 
+        (IntType <# "int" |
         BoolType <# "bool"       |
         CharType <# "char"       |
         StringType <# "string")
 
     // TO BE MODIFIED 
-    lazy val `<array-type>` : Parsley[ArrayType] = ArrayType(`<type>` <~ "[]")
+    lazy val `<array-type>` : Parsley[Type] = chain.postfix(`<base-type>` | `<pair-type>`)(ArrayType from "[]")
 
     lazy val `<pair-type>` : Parsley[PairType] = PairType("pair" ~> "(" ~> `<pair-elem-type>`, "," ~> `<pair-elem-type>` <~ ")")
 
@@ -88,7 +90,7 @@ object StatementParser {
     lazy val `<param-list>` : Parsley[ParamList] = ParamList(sepBy(`<param>`, ","))
     lazy val `<param>` : Parsley[Param] = Param(`<type>`, `<ident>`)
 
-    lazy val `<stmt>`: Parsley[Stmt] = (
+    lazy val `<stmt>`: Parsley[Stmt] = chain.left1(
         Skip from "skip" |
         Declare(`<type>`, `<ident>`, "=" ~> `<rvalue>`) |
         Assign(`<lvalue>`, "=" ~> `<rvalue>`) |
@@ -100,9 +102,8 @@ object StatementParser {
         Println("println" ~> `<expr>`) |
         IfThenElse("if" ~> `<expr>`, "then" ~> `<stmt>`, "else" ~> `<stmt>` <~ "fi") |
         WhileDo("while" ~> `<expr>`, "do" ~> `<stmt>` <~ "done") |
-        BeginEnd("begin" ~> `<stmt>` <~ "end") |
-        StmtList(`<stmt>`, ";" ~> `<stmt>`)
-    )
+        BeginEnd("begin" ~> `<stmt>` <~ "end") 
+    )(StmtList from ";")
 
     lazy val `<lvalue>` : Parsley[Lvalue] = 
         `<ident>`      <|> 
@@ -132,17 +133,17 @@ object parser {
     import parsley.{Result, Success, Failure}
     import lexer._
 
-    def parse(expr: String): Result[String, Expr] = {
-        fully(`<expr>`).parse(expr) match {
-            case Success(result) => Success(result)
-            case Failure(error) => Failure(error.toString)
-        }
-    }
-
-    // def parse(prog: String): Result[String, Stmt] = {
-    //     fully(`<prog>`).parse(prog) match {
+    // def parse(expr: String): Result[String, Expr] = {
+    //     fully(`<expr>`).parse(expr) match {
     //         case Success(result) => Success(result)
     //         case Failure(error) => Failure(error.toString)
     //     }
     // }
+
+    def parse(prog: String): Result[String, Stmt] = {
+        fully(`<prog>`).parse(prog) match {
+            case Success(result) => Success(result)
+            case Failure(error) => Failure(error)
+        }
+    }
 }
