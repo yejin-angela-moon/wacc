@@ -27,11 +27,11 @@ trait error {
 
 object syntaxError extends error {
   override val errorType = "Syntax"
-  override def exitStatus(): Unit = 100
+  override def exitStatus() : Int = 100
 }
 
 object semanticError extends error {
   override val errorType = "Semantic"
-  override def exitStatus(): Unit = 200
+  override def exitStatus() : Int = 200
 }
 
