@@ -1,13 +1,12 @@
 package wacc
 import scala.collection.mutable.ListBuffer
 
-
 trait error {
-  val errorType: String
+  val errorType : String
   val log: ListBuffer[String] = ListBuffer.empty[String]
 
-  def addError(message: String) = {
-    log += message
+  def addError(msg : String) = {
+    log += msg
   }
 
   def printError() = {
@@ -17,6 +16,8 @@ trait error {
     }
   }
 
+  def exitStatus() : Int
+
   def hasError: Boolean = log.nonEmpty
     
   def resetError() = {
@@ -24,10 +25,13 @@ trait error {
   }
 }
 
-object semanticError extends error {
-  override val errorType = "Semantic"
-}
-
 object syntaxError extends error {
   override val errorType = "Syntax"
+  override def exitStatus(): Unit = 100
 }
+
+object semanticError extends error {
+  override val errorType = "Semantic"
+  override def exitStatus(): Unit = 200
+}
+
