@@ -1,0 +1,6 @@
+package wacc
+
+class SemanticChecker() {
+
+
+}
