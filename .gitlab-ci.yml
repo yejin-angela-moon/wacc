@@ -5,7 +5,7 @@ stages:
 build-job:
   stage: build
   script:
-    - sbt compile assembly
+    - sbt assembly
 
 test-job:
   stage: test
