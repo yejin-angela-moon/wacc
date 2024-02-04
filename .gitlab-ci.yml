@@ -1,0 +1,13 @@
+stages:
+- build
+- test
+
+build-job:
+  stage: build
+  script:
+    - sbt compile assembly
+
+test-job:
+  stage: test
+  script:
+    - sbt test
