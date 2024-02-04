@@ -16,26 +16,24 @@ import TypeParser._
 import StatementParser._
 
 object ExpressionParser {
-    lazy val `<int-liter>` = IntLit(INTEGER)
+    lazy val `<int-liter>`  = IntLit(INTEGER)
     lazy val `<bool-liter>` = BoolLit(BOOL)
     lazy val `<char-liter>` = CharLit(CHAR)
-    lazy val `<str-liter>` = StrLit(STRING)
-    lazy val `<ident>` = Ident(IDENT)
+    lazy val `<str-liter>`  = StrLit(STRING)
+    lazy val `<ident>`      = Ident(IDENT)
     lazy val `<array-elem>` = ArrayElem(`<ident>`, some("[" ~> `<expr>` <~ "]"))
-    // lazy val `<paran>` : Parsley[Expr] = Paran("(" ~> `<expr>` <~ ")")
 
-    lazy val `<atom>`: Parsley[Expr] =
-        (`<int-liter>`  |
-        `<bool-liter>`  |
-        `<char-liter>`  |
-        `<str-liter>`   |
+    lazy val `<atom>`: Parsley[Expr] = atomic(
+        `<int-liter>`     |
+        `<bool-liter>`    |
+        `<char-liter>`    |
+        `<str-liter>`     |
         PairLit <# "null" |
-        `<ident>` | `<array-elem>` )
-        // `<paran>`)
-
-
-
-     lazy val `<expr>`: Parsley[Expr] = precedence (
+        `<ident>`         | 
+        `<array-elem>`    |
+        "(" ~> `<expr>` <~ ")")
+    
+     lazy val `<expr>`: Parsley[Expr] = atomic(precedence (
         SOps(InfixR)(Or     from "||") +:
         SOps(InfixR)(And    from "&&") +:
         SOps(InfixN)(LT     from "<",   LTE     from "<=",
@@ -49,50 +47,51 @@ object ExpressionParser {
         SOps(Prefix)(Len    from "len", Ord     from "ord",
                      Chr    from "chr") +:
         Atoms(`<atom>`)
-    )
+    ))
 
 
 }
 
+/* Both for <type> and <pair-elem-type> the ordering is crucial.
+   The <array-type> matcher MUST sit before the <base-type> one so input is not consumed.*/
 object TypeParser {
 
-    lazy val `<type>` =
-        `<base-type>`  <|>
+    lazy val `<type>` : Parsley[Type] = (
         `<array-type>` <|>
-        `<pair-type>`
+        `<base-type>`  <|>
+        `<pair-type>`)
         
-    lazy val `<base-type>` = 
-        (IntType <# "int" |
+    lazy val `<base-type>` : Parsley[BaseType] = (
+        IntType <# "int" |
         BoolType <# "bool"       |
         CharType <# "char"       |
         StringType <# "string")
 
-    // TO BE MODIFIED 
-    lazy val `<array-type>` : Parsley[Type] = chain.postfix(`<base-type>` | `<pair-type>`)(ArrayType from "[]")
+    lazy val `<array-type>` : Parsley[Type] = chain.postfix((`<base-type>` | `<pair-type>`))(ArrayType from "[]")
 
     lazy val `<pair-type>` : Parsley[PairType] = PairType("pair" ~> "(" ~> `<pair-elem-type>`, "," ~> `<pair-elem-type>` <~ ")")
 
-    lazy val `<pair-elem-type>` : Parsley[PairElemType] = 
-        (PairElemType2(`<base-type>`)  |
-         PairElemType2(`<array-type>`) | 
-         PairElemType1 <# "pair")
+    lazy val `<pair-elem-type>` : Parsley[PairElemType] = (
+        PairElemType2(`<array-type>`) |
+        PairElemType2(`<base-type>`)  | 
+        PairElemType1 <# "pair")
 }
 
 
 object StatementParser {
 
-    lazy val `<prog>` : Parsley[Program] = Program("begin" ~> many(`<func>`), `<stmt>` <~ "end")
+    lazy val `<prog>` : Parsley[Program] = Program("begin" ~>  many(`<func>`), `<stmt>` <~ "end") 
 
-    lazy val `<func>` : Parsley[Func] = Func(`<type>`, `<ident>`,
-                        "(" ~> `<param-list>` <~ ")",
-                        "is" ~> `<stmt>` <~ "end")
+    lazy val `<func>` : Parsley[Func] = atomic(Func(`<type>`, `<ident>`,
+                        atomic("(" ~> `<param-list>` <~ ")"),
+                        "is" ~> `<stmt>` <~ "end"))
 
     lazy val `<param-list>` : Parsley[ParamList] = ParamList(sepBy(`<param>`, ","))
     lazy val `<param>` : Parsley[Param] = Param(`<type>`, `<ident>`)
 
-    lazy val `<stmt>`: Parsley[Stmt] = chain.left1(
-        Skip from "skip" |
-        Declare(`<type>`, `<ident>`, "=" ~> `<rvalue>`) |
+    lazy val `<stmt>`: Parsley[Stmt] = chain.left1((
+        (Skip from "skip") |
+        atomic(Declare(`<type>`, `<ident>`, "=" ~> `<rvalue>`)) |
         Assign(`<lvalue>`, "=" ~> `<rvalue>`) |
         Read("read" ~> `<lvalue>`) |
         Free("free" ~> `<expr>`) |
@@ -103,24 +102,24 @@ object StatementParser {
         IfThenElse("if" ~> `<expr>`, "then" ~> `<stmt>`, "else" ~> `<stmt>` <~ "fi") |
         WhileDo("while" ~> `<expr>`, "do" ~> `<stmt>` <~ "done") |
         BeginEnd("begin" ~> `<stmt>` <~ "end") 
-    )(StmtList from ";")
+    ))(StmtList from ";")
 
-    lazy val `<lvalue>` : Parsley[Lvalue] = 
-        `<ident>`      <|> 
-        `<array-elem>` <|>
-        `<pair-elem>`
+    lazy val `<lvalue>` : Parsley[Lvalue] = atomic(
+        `<ident>`       | 
+        `<array-elem>`  |
+        `<pair-elem>`)
 
-    lazy val `<rvalue>` : Parsley[Rvalue] = (
-        `<expr>` | `<array-liter>` |
+    lazy val `<rvalue>` : Parsley[Rvalue] = atomic(
+        `<expr>`        | 
+        `<array-liter>` |
+        `<pair-elem>`   |
         NewPair("newpair" ~> "(" ~> `<expr>` <~ ",", `<expr>` <~ ")") |
-        `<pair-elem>` |
-        Call("call" ~> `<ident>`, "(" ~> option(`<arg-list>`) <~ ")")
-    )
+        Call("call" ~> `<ident>`, "(" ~> option(`<arg-list>`) <~ ")"))
 
 
-    lazy val `<pair-elem>` : Parsley[PairElem] = 
-       Fst("fst" ~> `<lvalue>`) <|>
-       Snd("snd" ~> `<lvalue>`)
+    lazy val `<pair-elem>` : Parsley[PairElem] = atomic(
+       Fst("fst" ~> `<lvalue>`) |
+       Snd("snd" ~> `<lvalue>`))
 
     lazy val `<array-liter>` : Parsley[ArrayLit] = ArrayLit( "[" ~> option("(" ~> sepBy1(`<expr>`, ",") <~ ")") <~ "]")
 
@@ -146,4 +145,11 @@ object parser {
             case Failure(error) => Failure(error)
         }
     }
+
+    // def parse(stmt: String): Result[String, Stmt] = {
+    //     fully(`<stmt>`).parse(stmt) match {
+    //         case Success(result) => Success(result)
+    //         case Failure(error) => Failure(error)
+    //     }
+    // }
 }
