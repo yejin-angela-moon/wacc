@@ -1,7 +1,7 @@
 package wacc
 import scala.collection.mutable.ListBuffer
 
-trait error {
+trait Error {
   val errorType : String
   val log: ListBuffer[String] = ListBuffer.empty[String]
 
@@ -25,12 +25,12 @@ trait error {
   }
 }
 
-object syntaxError extends error {
+object syntaxError extends Error {
   override val errorType = "Syntax"
   override def exitStatus() : Int = 100
 }
 
-object semanticError extends error {
+object semanticError extends Error {
   override val errorType = "Semantic"
   override def exitStatus() : Int = 200
 }
