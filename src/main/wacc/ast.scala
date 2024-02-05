@@ -3,7 +3,7 @@ package wacc
 object ast {
     import parsley.generic._
 
-    sealed trait Expr extends Rvalue
+    sealed trait Expr extends Rvalue with Lvalue
 
     //Binary Operator
     case class Add(x: Expr, y: Expr) extends Expr
@@ -14,7 +14,7 @@ object ast {
     case class And(x: Expr, y: Expr) extends Expr
     case class Or(x: Expr, y: Expr) extends Expr
     case class LT(x: Expr, y: Expr) extends Expr
-    case class LTE(x: Expr, y: Expr) extends Expr    
+    case class LTE(x: Expr, y: Expr) extends Expr
     case class GT(x: Expr, y: Expr) extends Expr
     case class GTE(x: Expr, y: Expr) extends Expr
     case class E(x: Expr, y: Expr) extends Expr
@@ -36,7 +36,7 @@ object ast {
     case class ArrayElem(ident: Ident, x: List[Expr]) extends Expr with Lvalue
     case class Paran(x: Expr) extends Expr
 
-    // sealed trait PairLit extends Expr 
+    // sealed trait PairLit extends Expr
     // case class Null() extends PairLit with ParserBridge0[PairLit]
 
     case object PairLit extends Expr with ParserBridge0[Expr]
@@ -46,13 +46,13 @@ object ast {
 
     //Function
     case class Func(t: Type, ident: Ident, list: ParamList, body: Stmt)
-    
+
     //Parameter List
-    case class ParamList(params: List[Param]) 
-    
+    case class ParamList(params: List[Param])
+
     //Parameter
-    case class Param(t: Type, ident: Ident) 
-    
+    case class Param(t: Type, ident: Ident)
+
     sealed trait Stmt
     //Statements
     case object Skip extends Stmt with ParserBridge0[Stmt]
@@ -67,7 +67,7 @@ object ast {
     case class IfThenElse(x: Expr, s1: Stmt, s2: Stmt) extends Stmt
     case class WhileDo(x: Expr, s:Stmt) extends Stmt
     case class BeginEnd(s: Stmt) extends Stmt
-    case class StmtList(s1: Stmt, s2: Stmt) extends Stmt    
+    case class StmtList(s1: Stmt, s2: Stmt) extends Stmt
 
 
     //Lvalue
@@ -84,10 +84,10 @@ object ast {
     case class Fst(x: Lvalue) extends PairElem
     case class Snd(x: Lvalue) extends PairElem
 
-    //Arg List 
+    //Arg List
     case class ArgList(x: List[Expr])
 
-    //Array 
+    //Array
 
     //Type
     sealed trait Type
@@ -96,10 +96,9 @@ object ast {
     case class ArrayType(t: Type) extends Type with PairElemType
     case class PairType(p1: PairElemType, p2: PairElemType) extends Type
 
-    sealed trait PairElemType 
+    sealed trait PairElemType
     case object PairElemType1 extends PairElemType with ParserBridge0[PairElemType] 
     case class  PairElemType2(t: Type) extends PairElemType 
-    
 
     case object IntType extends BaseType with ParserBridge0[BaseType]
     case object BoolType extends BaseType with ParserBridge0[BaseType]
@@ -161,8 +160,12 @@ object ast {
 
     object ArrayType extends ParserBridge1[Type, ArrayType]
     object PairElemType2 extends PairElemType with ParserBridge1[Type, PairElemType]
-    // object IntType extends ParserBridge0[BigInt, IntType]
-    // object BoolType extends ParserBridge1[Boolean, BoolType]
-    // object CharType extends ParserBridge1[Char, CharType]
-    // object StringType extends ParserBridge1[String, StringType]
+
+    object IdentOrArrayElem extends ParserBridge2[Ident, List[Expr], Expr]
+    {
+        def apply(ident: Ident, args: List[Expr]) = args match {
+            case Nil => ident
+            case args => ArrayElem(ident, args)
+        }
+    }
 }
