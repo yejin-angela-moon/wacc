@@ -18,12 +18,17 @@ import scala.util.chaining
 import java.io._
 
 object ExpressionParser {
+
+    /*
+        ⟨atom⟩ ::= ⟨int-liter⟩ | ⟨bool-liter⟩ | ⟨char-liter⟩ | ⟨str-liter⟩ | ⟨pair-liter⟩ 
+                | ⟨ident⟩ | ⟨array-elem⟩ | ‘(’ ⟨expr⟩ ‘)’
+    */
+
     lazy val `<int-liter>` = IntLit(INTEGER)
     lazy val `<bool-liter>` = BoolLit(BOOL)
     lazy val `<char-liter>` = CharLit(CHAR)
     lazy val `<str-liter>` = StrLit(STRING)
     lazy val `<ident>` = Ident(IDENT)
-    lazy val `<array-elem>` = atomic(ArrayElem(`<ident>`, manyN(1, "[" ~> `<expr>` <~ "]")))
 
     lazy val `<atom>`: Parsley[Expr] =
         atomic(`<int-liter>`  |
@@ -35,6 +40,7 @@ object ExpressionParser {
         "(" ~> `<expr>` <~ ")"
         )
 
+    /* ⟨expr⟩ ::= ⟨unary-oper⟩ ⟨expr⟩ | ⟨expr⟩ ⟨binary-oper⟩ ⟨expr⟩ | ⟨atom⟩ */
      lazy val `<expr>`: Parsley[Expr] = atomic(precedence (
         SOps(InfixR)(Or     from "||") +:
         SOps(InfixR)(And    from "&&") +:
@@ -56,42 +62,58 @@ object ExpressionParser {
 
 object TypeParser {
 
+    /* ⟨type⟩ ::= ⟨base-type⟩ | ⟨array-type⟩ | ⟨pair-type⟩ */
     lazy val `<type>` : Parsley[Type] = atomic(
         `<array-type>` <|>
         `<base-type>` <|>
         `<pair-type>`
     )
 
-    lazy val `<base-type>` : Parsley[BaseType] = 
+    /* ⟨base-type⟩ ::= ‘int’ | ‘bool’ | ‘char’ | ‘string’ */
+    lazy val `<base-type>` : Parsley[BaseType] =
         atomic(IntType <# "int" |
         BoolType <# "bool"       |
         CharType <# "char"       |
         StringType <# "string"   )
 
-    // TO BE MODIFIED 
-    lazy val `<array-type>` : Parsley[Type] = chain.postfix(`<base-type>` | `<pair-type>`)(ArrayType from "[]")
-    // lazy val `<array-type>` : Parsley[ArrayType[Type]] ?
+    /* ⟨array-type⟩ ::= ⟨type⟩ ‘[’ ‘]’ */
+    lazy val `<array-type>` : Parsley[Type] = chain.postfix(
+        `<base-type>` | `<pair-type>`)(ArrayType from "[]")
 
-    lazy val `<pair-type>` : Parsley[PairType] = atomic(PairType("pair" ~> "(" ~> `<pair-elem-type>`, "," ~> `<pair-elem-type>` <~ ")"))
+    /* ⟨pair-type⟩ ::= ‘pair’ ‘(’ ⟨pair-elem-type⟩ ‘,’ ⟨pair-elem-type⟩ ‘)’ */
+    lazy val `<pair-type>` : Parsley[PairType] = atomic(
+        PairType("pair" ~> "(" ~> `<pair-elem-type>`, "," ~> `<pair-elem-type>` <~ ")"))
 
+    /* ⟨pair-elem-type⟩ ::= ⟨base-type⟩ | ⟨array-type⟩ | ‘pair’ */
     lazy val `<pair-elem-type>` : Parsley[PairElemType] = atomic(
-        PairElemType2(`<array-type>`) | 
-        PairElemType2(`<base-type>`)  |
-         PairElemType1 <# "pair")
+        PairElemType2(`<array-type>` | `<base-type>`) |
+        PairElemType1 <# "pair")
 }
 
 
 object StatementParser {
 
-    lazy val `<prog>` : Parsley[Program] = atomic(Program("begin" ~> many(`<func>`), `<stmt>` <~ "end"))
+    /* ⟨program⟩ ::= ‘begin’ ⟨func⟩* ⟨stmt⟩ ‘end’ */
+    lazy val `<prog>` : Parsley[Program] = atomic(
+        Program("begin" ~> many(`<func>`), `<stmt>` <~ "end"))
 
-    lazy val `<func>` : Parsley[Func] = atomic(Func(`<type>`, `<ident>`,
-                        "(" ~> `<param-list>` <~ ")",
-                        "is" ~> `<stmt>` <~ "end"))
+    /* ⟨func⟩ ::= ⟨type⟩ ⟨ident⟩ ‘(’ ⟨param-list⟩? ‘)’ ‘is’ ⟨stmt⟩ ‘end’ */
+    lazy val `<func>` : Parsley[Func] = atomic(
+        Func(`<type>`, `<ident>`, "(" ~> `<param-list>` <~ ")",
+                "is" ~> `<stmt>` <~ "end"))
 
+    /* <param-list> ::= <param> (',' <param>)* */
     lazy val `<param-list>` : Parsley[ParamList] = atomic(ParamList(sepBy(`<param>`, ",")))
+
+    /* <param> ::= <type> <ident> */
     lazy val `<param>` : Parsley[Param] = atomic(Param(`<type>`, `<ident>`))
 
+    /*
+        ⟨stmt⟩ ::= ‘skip’ | ⟨type⟩ ⟨ident⟩ ‘=’ ⟨rvalue⟩ | ⟨lvalue⟩ ‘=’ ⟨rvalue⟩
+            | ‘read’ ⟨lvalue⟩ | ‘free’ ⟨expr ⟩ | ‘return’ ⟨expr ⟩ | ‘exit’ ⟨expr ⟩
+            | ‘print’ ⟨expr ⟩ | ‘println’ ⟨expr ⟩ | ‘if’ ⟨expr ⟩ ‘then’ ⟨stmt ⟩ ‘else’ ⟨stmt ⟩ ‘fi’
+            | ‘while’ ⟨expr ⟩ ‘do’ ⟨stmt ⟩ ‘done’ | ‘begin’ ⟨stmt ⟩ ‘end’ | ⟨stmt ⟩ ‘;’ ⟨stmt ⟩
+    */
     lazy val `<stmt>`: Parsley[Stmt] = atomic(chain.left1(
         (Skip from "skip") |
         Declare(`<type>`, `<ident>`, "=" ~> `<rvalue>`) |
@@ -107,10 +129,12 @@ object StatementParser {
         BeginEnd("begin" ~> `<stmt>` <~ "end")
     )(StmtList from ";"))
 
+    /* <lvalue> ::= ⟨ident⟩ | ⟨array-elem⟩ | ⟨pair-elem⟩ */
     lazy val `<lvalue>` : Parsley[Lvalue] = atomic(
-        IdentOrArrayElem(`<ident>`,  many("[" ~> `<expr>` <~ "]")) <|>
-        `<pair-elem>`)
+        IdentOrArrayElem(`<ident>`,  many("[" ~> `<expr>` <~ "]")) <|> `<pair-elem>`)
 
+    /* <rvalue> ::= ⟨expr⟩ | ⟨array-liter ⟩ | ‘newpair’ ‘(’ ⟨expr ⟩ ‘,’ ⟨expr ⟩ ‘)’ | ⟨pair-elem⟩
+                | ‘call’ ⟨ident⟩ ‘(’ ⟨arg-list⟩? ‘)’ */
     lazy val `<rvalue>` : Parsley[Rvalue] = atomic(
         `<array-liter>` |
         `<expr>` |
@@ -119,14 +143,17 @@ object StatementParser {
         Call("call" ~> `<ident>`, "(" ~> option(`<arg-list>`) <~ ")")
     )
 
+    /* <pair-elem> ::= ‘fst’ ⟨lvalue⟩ | ‘snd’ ⟨lvalue⟩ */
     lazy val `<pair-elem>` : Parsley[PairElem] = atomic(
        Fst("fst" ~> `<lvalue>`) <|>
        Snd("snd" ~> `<lvalue>`))
 
+    /* <array-liter> ::= ‘[’ ( ⟨expr⟩ (‘,’ ⟨expr⟩)* )? ‘]’ */
     lazy val `<array-liter>` : Parsley[ArrayLit] = atomic(
         ArrayLit( "[" ~> option(sepBy1(`<expr>`, ",")) <~ "]")
         )
 
+    /* <arg-list> ::=  ⟨expr⟩ (‘,’ ⟨expr⟩ )* */
     lazy val `<arg-list>` : Parsley[ArgList] = atomic(ArgList(sepBy1(`<expr>`, ",")))
 
 }
@@ -137,14 +164,21 @@ object parser {
     import scala.util.{Try, Success, Failure}
     import lexer._
 
+    /*
+        Parse the content in the file. If success return the parsed statement,
+        otherwise return the failure message.
+        Exit 0 if the the filename is invalid
+    */
     def parse(prog: String): Result[String, Stmt] = {
         fully(`<prog>`).parseFile(new File(prog)) match {
             case scala.util.Success(ret) => ret match {
                 case parsley.Success(stmt) => parsley.Success(stmt)
                 case parsley.Failure(msg) => parsley.Failure(msg)
             }
-            case scala.util.Failure(msg) => {System.exit(0)
-            return parsley.Failure(msg.getMessage)}
+            case scala.util.Failure(msg) => {
+                System.exit(0)
+                return parsley.Failure(msg.getMessage)
+            }
         }
     }
 

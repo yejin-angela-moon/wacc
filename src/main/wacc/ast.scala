@@ -5,7 +5,11 @@ object ast {
 
     sealed trait Expr extends Rvalue with Lvalue
 
-    //Binary Operator
+    /*
+        Binary Operator
+        ⟨binary-oper⟩ ::= ‘*’ | ‘/’ | ‘%’ | ‘+’ | ‘-’ | ‘>’ | ‘>=’ | ‘<’ | ‘<=’
+                        | ‘==’ | ‘!=’ | ‘&&’ | ‘||’
+    */
     case class Add(x: Expr, y: Expr) extends Expr
     case class Sub(x: Expr, y: Expr) extends Expr
     case class Mul(x: Expr, y: Expr) extends Expr
@@ -20,14 +24,19 @@ object ast {
     case class E(x: Expr, y: Expr) extends Expr
     case class NE(x: Expr, y: Expr) extends Expr
 
-    //Unary Operator
+    /*
+        Unary Operator
+        ⟨unary-oper⟩ ::= ‘!’ | ‘-’ | ‘len’ | ‘ord’ | ‘chr’
+    */
     case class Not(x: Expr) extends Expr
     case class Neg(x: Expr) extends Expr
     case class Len(x: Expr) extends Expr
     case class Ord(x: Expr) extends Expr
     case class Chr(x: Expr) extends Expr
 
-    //Atom
+    /*
+        Atom
+    */
     case class IntLit(x: BigInt) extends Expr
     case class BoolLit(x: Boolean) extends Expr
     case class CharLit(x: Char) extends Expr
@@ -35,26 +44,22 @@ object ast {
     case class Ident(x: String) extends Expr with Lvalue
     case class ArrayElem(ident: Ident, x: List[Expr]) extends Expr with Lvalue
     case class Paran(x: Expr) extends Expr
-
-    // sealed trait PairLit extends Expr
-    // case class Null() extends PairLit with ParserBridge0[PairLit]
-
     case object PairLit extends Expr with ParserBridge0[Expr]
 
-    //Program
+    /* Program */
     case class Program(funcs: List[Func], body: Stmt) extends Stmt
 
-    //Function
+    /* Function */
     case class Func(t: Type, ident: Ident, list: ParamList, body: Stmt)
 
-    //Parameter List
+    /* Parameter List */
     case class ParamList(params: List[Param])
 
-    //Parameter
+    /* Parameter */
     case class Param(t: Type, ident: Ident)
 
+    /* Statement */
     sealed trait Stmt
-    //Statements
     case object Skip extends Stmt with ParserBridge0[Stmt]
     case class Declare(t: Type, ident: Ident, rvalue: Rvalue) extends Stmt
     case class Assign(lvalue: Lvalue, rvalue: Rvalue) extends Stmt
@@ -69,37 +74,37 @@ object ast {
     case class BeginEnd(s: Stmt) extends Stmt
     case class StmtList(s1: Stmt, s2: Stmt) extends Stmt
 
-
-    //Lvalue
+    /* Lvalue */
     sealed trait Lvalue
 
-    //Rvalue
+    /* Rvalue */
     sealed trait Rvalue
     case class ArrayLit(x: Option[List[Expr]]) extends Rvalue
     case class NewPair(x1: Expr, x2: Expr) extends Rvalue
     case class Call(i: Ident, x: Option[ArgList]) extends Rvalue
 
-    //Pair Elem
+    /* Pair Elem */
     sealed trait PairElem extends Lvalue with Rvalue
     case class Fst(x: Lvalue) extends PairElem
     case class Snd(x: Lvalue) extends PairElem
 
-    //Arg List
+    /* Arguement List */
     case class ArgList(x: List[Expr])
 
-    //Array
-
-    //Type
+    /* Type */
     sealed trait Type
-    sealed trait BaseType extends Type with PairElemType
 
-    case class ArrayType(t: Type) extends Type with PairElemType
+    /* Pair Type */
     case class PairType(p1: PairElemType, p2: PairElemType) extends Type
 
+    /* Pair Elem Type */
     sealed trait PairElemType
-    case object PairElemType1 extends PairElemType with ParserBridge0[PairElemType] 
-    case class  PairElemType2(t: Type) extends PairElemType 
+    case object PairElemType1 extends PairElemType with ParserBridge0[PairElemType]
+    case class  PairElemType2(t: Type) extends PairElemType
+    case class ArrayType(t: Type) extends Type with PairElemType
 
+    /* Base Type */
+    sealed trait BaseType extends Type with PairElemType
     case object IntType extends BaseType with ParserBridge0[BaseType]
     case object BoolType extends BaseType with ParserBridge0[BaseType]
     case object CharType extends BaseType with ParserBridge0[BaseType]
@@ -161,6 +166,7 @@ object ast {
     object ArrayType extends ParserBridge1[Type, ArrayType]
     object PairElemType2 extends PairElemType with ParserBridge1[Type, PairElemType]
 
+    /* Ident Or Array Elem */
     object IdentOrArrayElem extends ParserBridge2[Ident, List[Expr], Expr]
     {
         def apply(ident: Ident, args: List[Expr]) = args match {
