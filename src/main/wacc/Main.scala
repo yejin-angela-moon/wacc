@@ -5,17 +5,26 @@ import scala.io.StdIn
 import scala.io.Source
 import lexer._
 import parser._
+// import semantic._
 
 object Main {
     def main(args: Array[String]): Unit = {
         println("hello WACC!")
 
         args.headOption match {
-            case Some(expr) =>
+            case Some(prog) =>
 
-                parser.parse(expr) match {
-                case Success(x) =>
-                    println(s"$expr = $x")
+                parser.parse(prog) match {
+                case Success(x) => 
+                    println(s"$prog = $x")
+                    // semantic.checkSemanticStmt(x, error = semanticError) match {
+                    //     case Success(x) => 
+                    //         println(s"$prog = $x")
+                    //     case Failure(x) =>
+                    //         // println(msg)
+                    //         println("Exiting with code 200 due to semantic error")
+                    //         System.exit(200)
+                    // }
                 case Failure(msg) =>
                     println(msg)
                     println("Exiting with code 100 due to syntax error")
