@@ -35,3 +35,4 @@ object semanticError extends Error {
   override def exitStatus() : Int = 200
 }
 
+

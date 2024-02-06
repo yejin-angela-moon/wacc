@@ -9,7 +9,7 @@ import parsley.syntax.character.charLift
 import parsley.character.digit
 import parsley.combinator.option
 import lexer.implicits.implicitSymbol
-import lexer.{INTEGER, BOOL, STRING, CHAR, IDENT, fully}
+import lexer._
 import ast._
 import ExpressionParser._
 import TypeParser._
@@ -49,7 +49,7 @@ object ExpressionParser {
                      E      from "==",  NE      from "!=") +:
         SOps(InfixL)(Mod    from "%") +:
         SOps(InfixL)(Add    from "+",   Sub     from "-") +:
-        SOps(Prefix)(Neg    from "-") +:
+        SOps(Prefix)(Neg    from NEGATE) +:
         SOps(Prefix)(Not    from "!") +:
         SOps(InfixL)(Mul    from "*",   Div     from "/") +:
         SOps(Prefix)(Len    from "len", Ord     from "ord",
@@ -174,7 +174,7 @@ object parser {
                 case parsley.Failure(msg) => parsley.Failure(msg)
             }
             case scala.util.Failure(msg) => {
-                System.exit(0)
+                System.exit(100)
                 return parsley.Failure(msg.getMessage)
             }
         }

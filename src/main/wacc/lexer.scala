@@ -1,9 +1,12 @@
 package wacc
 
 import parsley.Parsley
+import parsley.Parsley._
 import parsley.token.Lexer
 import parsley.token.descriptions._
 import parsley.token.predicate.{Unicode, Basic}
+import parsley.combinator.option
+import parsley.character.{digit, string}
 
 import parsley.character.newline
 
@@ -52,6 +55,7 @@ object lexer{
     private val lexer = new Lexer(desc)
 
     /* <int-liter> ::= ⟨int-sign⟩? ⟨digit⟩+ */
+    val NEGATE = lexer.lexeme(atomic(string("-") *> notFollowedBy(digit)))
     val INTEGER = lexer.lexeme.signed.decimal32[BigInt]
     val IDENT = lexer.lexeme.names.identifier
     val STRING = lexer.lexeme.string.ascii
