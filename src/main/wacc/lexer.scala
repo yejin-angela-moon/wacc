@@ -52,7 +52,7 @@ object lexer{
     private val lexer = new Lexer(desc)
 
     /* <int-liter> ::= ⟨int-sign⟩? ⟨digit⟩+ */
-    val INTEGER = lexer.lexeme.signed.number
+    val INTEGER = lexer.lexeme.signed.decimal32[BigInt]
     val IDENT = lexer.lexeme.names.identifier
     val STRING = lexer.lexeme.string.ascii
     val CHAR = lexer.lexeme.character.ascii
