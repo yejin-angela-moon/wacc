@@ -10,4 +10,7 @@ all:
 clean:
 	scala-cli clean . && rm -f wacc-compiler
 
+test:
+	scala-cli test .
+
 .PHONY: all clean

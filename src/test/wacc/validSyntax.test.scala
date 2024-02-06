@@ -1,28 +1,50 @@
 package wacc
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import org.scalatest.funsuite.AnyFunSuite
 import parsley.Failure
 import parsley.Success
+import java.io._
+import scala.util._
+import GetOutput._
 
-class ParserSpec extends AnyFlatSpec with Matchers {
+class ValidSyntax extends AnyFunSuite {
+  val validDir = new File("valid/")
 
-  "The parser" should "correctly parse simple addition" {
-    val result = parser.parse("1 + 1")
-    result shouldBe a[Success[_]]
-    result.get shouldEqual 2
+  assert(validDir.isDirectory)
+
+  val subDirs = validDir.listFiles()
+
+  for(subDir <- subDirs) {
+    println ("Cheking valid files in \"" + subDir.getPath().substring("valid/".length()) + "\"") 
+    for(validFile <- subDir.listFiles()) {
+      
+     
+      if (validFile.isFile()) {
+         // Files
+
+        test ("Testing: "  + validFile.getPath().substring("valid/".length())){
+          assert(validFile.isFile())
+          assert(getOutput(validFile) == "success")
+        }
+      } else {
+        // Sub-directories
+
+        for(subValidFile <- validFile.listFiles())
+          test ("Testing: "  + subValidFile.getPath().substring("valid/".length())) {
+            assert(subValidFile.isFile())
+            assert(getOutput(subValidFile) == "success")
+          }
+      }
+    }
+
   }
+}
 
-  it should "correctly parse simple subtraction" in {
-    val result = parser.parse("2 - 1")
-    result shouldBe a[Success[_]]
-    result.get shouldEqual 1
-  }
-
-  it should "return Failure for invalid input" in {
-    val result = parser.parse("invalid")
-    result shouldBe a[Failure]
-  }
-
-  
+object GetOutput {
+   def getOutput( f: File) =
+    parser.parse(f.getPath()) match {
+            case Success(_) => "success" 
+            case Failure(_) => "failure"
+            case _          => "error"
+          }
 }
