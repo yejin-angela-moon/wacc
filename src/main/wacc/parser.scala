@@ -20,7 +20,7 @@ import java.io._
 object ExpressionParser {
 
     /*
-        ⟨atom⟩ ::= ⟨int-liter⟩ | ⟨bool-liter⟩ | ⟨char-liter⟩ | ⟨str-liter⟩ | ⟨pair-liter⟩ 
+        ⟨atom⟩ ::= ⟨int-liter⟩ | ⟨bool-liter⟩ | ⟨char-liter⟩ | ⟨str-liter⟩ | ⟨pair-liter⟩
                 | ⟨ident⟩ | ⟨array-elem⟩ | ‘(’ ⟨expr⟩ ‘)’
     */
 
@@ -56,8 +56,6 @@ object ExpressionParser {
                      Chr    from "chr") +:
         Atoms(`<atom>`)
     ))
-
-
 }
 
 object TypeParser {
