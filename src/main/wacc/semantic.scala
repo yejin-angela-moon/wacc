@@ -1,43 +1,102 @@
 package wacc
 
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{HashMap}
 import parsley.{Result, Success, Failure}
 import ast._
-import CheckExprSemantic._
-import CheckStatmentSemantic._
-import CheckTypeSemantic._
 
-object SemanticTable {
-
+object symbolTable {
+    //map between the variable(ident) name and the type
+    //so everytime the assign somehitng create new entry
+    // when reassgin check the table if the rvalue have the same typw as the variable using the table
+    // check scope (change the name)
+    // array check a[i] if i is in range
+    //
+    Map[String, Type] symTable = new HashMap[String, Type]
 }
 
-object CheckExprSemantic {
-
-    def checkExprSemantic(expr: Expr) : Result[String, Stmt] = {
-        expr match {
-            case Add => {}
-            case Sub => {}
-            case Mul => {}
-            case Div => {}
-            case Mod => {}
-            case And => {}
-            case Or => {}
-            case LT => {}
-            case LTE => {}
-            case GT => {}
-            case GTE => {}
-            case E => {}
-            case NE => {}
-            case Not => {}
-            case Neg => {}
-            case Len => {}
-            case Ord => {}
-            case Chr => {}
-            case default => checkLit(expr)
-        }
+object Semantic {
+  //Array
+    def checkSemantic(prog: Stmt) : Unit = {
+        prog match {
+            case Program =>
+                checkStatementSemantic(prog.body)
+                prog.funcs.foreach(f => checkStatmentSemantic(f))
+            case default => System.exit(0)}
     }
 
-    def checkLit (lit: Expr) : Result[String, Stmt] = {
+    def checkExprSemantic(expr: Expr) : Unit = {
+        expr match {
+            case Add(e1, e2) => {
+                checkExprSemantic(e1)
+                checkExprSemantic(e2)
+            }
+            case Sub(e1, e2) => {
+                checkExprSemantic(e1)
+                checkExprSemantic(e2)
+            }
+            case Mul(e1, e2) => {
+                checkExprSemantic(e1)
+                checkExprSemantic(e2)
+            }
+            case Div(e1, e2) => {
+                checkExprSemantic(e1)
+                checkExprSemantic(e2)
+            }
+            case Mod(e1, e2) => {
+                checkExprSemantic(e1)
+                checkExprSemantic(e2)
+            }
+            case And(e1, e2) => {
+                checkExprSemantic(e1)
+                checkExprSemantic(e2)
+            }
+            case Or(e1, e2) => {
+                checkExprSemantic(e1)
+                checkExprSemantic(e2)
+            }
+            case LT(e1, e2) => {
+                checkExprSemantic(e1)
+                checkExprSemantic(e2)
+            }
+            case LTE(e1, e2) => {
+                checkExprSemantic(e1)
+                checkExprSemantic(e2)
+            }
+            case GT(e1, e2) => {
+                checkExprSemantic(e1)
+                checkExprSemantic(e2)
+            }
+            case GTE(e1, e2) => {
+                checkExprSemantic(e1)
+                checkExprSemantic(e2)
+            }
+            case E(e1, e2) => {
+                checkExprSemantic(e1)
+                checkExprSemantic(e2)
+            }
+            case NE(e1, e2) => {
+                checkExprSemantic(e1)
+                checkExprSemantic(e2)
+            }
+            case Not(e1) => {
+                checkExprSemantic(e1)
+            }
+            case Neg(e1) => {
+                checkExprSemantic(e1)
+            }
+            case Len(e1) => {
+                checkExprSemantic(e1)
+            }
+            case Ord(e1) => {
+                checkExprSemantic(e1)
+            }
+            case Chr(e1) => {
+                checkExprSemantic(e1)
+            }
+            case default => checkLit(expr)
+        }}
+
+    def checkLit (lit: Expr) : Unit = {
         lit match {
             case IntLit => {}
             case BoolLit => {}
@@ -49,33 +108,18 @@ object CheckExprSemantic {
             case PairLit => {}
         }
     }
-}
 
-object CheckStatmentSemantic {
-    def checkFunctionList(list: List[Func]) : Result[String, Stmt] {
-        
-    }
-
-    def checkStatementSemantic(stmt: Stmt) : Result[String, Stmt] {
+    def checkFunctionList(list: List[Func]) : Unit = {
 
     }
-}
 
-object  CheckTypeSemantic {
-
-    def checkTypeSemantic(stmt: Stmt) : Result[String, Stmt] {
+    def checkStatementSemantic(stmt: Stmt) : Unit = {
 
     }
-}
 
-object Semantic {
-  //Array
-    def checkSemantic(prog: Program) : Result[String, Stmt] = {
-        checkStatementSemantic(prog.body)
-        prog.funcs.foreach(f => checkStatmentSemantic(f))
+    def checkTypeSemantic(stmt: Stmt) : Unit = {
+
     }
-
-
 
 // // def checkSemantic(expr: Expr, error: Error): Type = {
 // //   expr match {
