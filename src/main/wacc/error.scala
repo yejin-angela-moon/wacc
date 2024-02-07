@@ -3,36 +3,44 @@ import scala.collection.mutable.ListBuffer
 
 trait Error {
   val errorType : String
-  val log: ListBuffer[String] = ListBuffer.empty[String]
+  //val log: ListBuffer[String] = ListBuffer.empty[String]
 
-  def addError(msg : String) = {
-    log += msg
-  }
+  //def addError(msg : String) = {
+  //  log += msg
+  //}
 
-  def printError() = {
-    println(s"The number of error is ${log.size.toString()}.")
-    for (msg <- log) {
-      println(s"$errorType Error: $msg")
-    }
-  }
+  val log: String
+
+  //def printError() = {
+  //  println(s"The number of error is ${log.size.toString()}.")
+  //  for (msg <- log) {
+  //    println(s"$errorType Error: $msg")
+  //  }
+  //}
 
   def exitStatus() : Int
 
-  def hasError: Boolean = log.nonEmpty
+  def hasError: Boolean = log != ""
     
-  def resetError() = {
-    log.clear()
-  }
+  def resetError(): Unit = ???
+
 }
 
 object SyntaxError extends Error {
-  override val errorType = "Syntax"
-  override def exitStatus() : Int = 100
+  def apply(msg: String): Error = new Error {
+    override val errorType: String = "Syntax"
+    override val log: String = msg
+
+    override def exitStatus(): Int = 100
+  }
 }
 
 object SemanticError extends Error {
-  override val errorType = "Semantic"
-  override def exitStatus() : Int = 200
+  def apply(msg: String): Error = new Error {
+    override val errorType: String = "Semantic"
+    override val log: String = msg
+    override def exitStatus(): Int = 200
+  }
 }
 
 
