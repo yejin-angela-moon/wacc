@@ -7,6 +7,8 @@ import java.io._
 import scala.util._
 import GetOutput._
 
+//TODO: the semantic test should not run unless the syntax tests pass and symbol table is correctly built. 
+
 class InvalidSyntax extends AnyFunSuite {
   val validDir = new File("invalid/syntaxErr/")
 

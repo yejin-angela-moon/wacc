@@ -1,17 +1,44 @@
 package wacc
 
+import parsley.{Success, Failure, Result}
+
+
+object FailureManager {
+    import ast._
+    def resolve(x : Result[List[Error], Expr], y : Result[List[Error], Expr]) : Result[List[Error], Expr] = {
+        (x,y) match {
+            case (Failure(a), Failure(b)) => Failure(a ++ b)
+            case (Failure(a), _) => Failure(a)
+            case (_, Failure(a)) => Failure(a)
+            case _ => Failure()
+        }
+    }
+}
+
 object ast {
     import parsley.generic._
+    import FailureManager.resolve
 
-    sealed trait Expr extends Rvalue with Lvalue
+    sealed trait Expr extends Rvalue with Lvalue {
+        def eval(scope: String) : Result[List[Error], Expr]
+    }
+
 
     /*
         Binary Operator
         ⟨binary-oper⟩ ::= ‘*’ | ‘/’ | ‘%’ | ‘+’ | ‘-’ | ‘>’ | ‘>=’ | ‘<’ | ‘<=’
                         | ‘==’ | ‘!=’ | ‘&&’ | ‘||’
     */
-    case class Add(x: Expr, y: Expr) extends Expr
-    case class Sub(x: Expr, y: Expr) extends Expr
+    case class Add(x: Expr, y: Expr) extends Expr {
+        def eval(scope : String) : Result[List[Error], Expr] = {
+            (x.eval(scope), y.eval(scope)) match {
+                case (Success(IntLit(a)), Success(IntLit(b))) => Success(IntLit(a + b))
+                case _ => resolve(x.eval(),y.eval())
+                
+            }
+        }
+    }
+    case class Sub(x: Expr, y: Expr) extends Expr 
     case class Mul(x: Expr, y: Expr) extends Expr
     case class Div(x: Expr, y: Expr) extends Expr
     case class Mod(x: Expr, y: Expr) extends Expr
@@ -37,13 +64,20 @@ object ast {
     /*
         Atom
     */
-    case class IntLit(x: BigInt) extends Expr
+    case class IntLit(x: BigInt) extends Expr {
+        def plus(that: IntLit) : IntLit = {
+            // check overflow and addition, return 
+            // in case of ove
+            // throw new ArithmeticException("addition overflow")
+            return IntLit(this.x + that.x)
+        }
+        def eval() : Result[Error, IntLit] = { return Success(this)}
+    }
     case class BoolLit(x: Boolean) extends Expr
     case class CharLit(x: Char) extends Expr
     case class StrLit(x: String) extends Expr
-    case class Ident(x: String) extends Expr with Lvalue
+    case class Ident(x: String) extends Expr with Lvalue 
     case class ArrayElem(ident: Ident, x: List[Expr]) extends Expr with Lvalue
-    case class Paran(x: Expr) extends Expr
     case object PairLit extends Expr with ParserBridge0[Expr]
 
     /* Program */

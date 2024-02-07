@@ -3,7 +3,7 @@ package wacc
 import scala.collection.mutable.{HashMap}
 import parsley.{Result, Success, Failure}
 import ast._
-import java.lang.foreign.MemorySegment.Scope
+// import java.lang.foreign.MemorySegment.Scope
 import scala.collection.immutable.ListMap
 import Error.SemanticError
 

@@ -1,39 +1,56 @@
 package wacc
 
 import parsley._
-import SemanticError._
+import Error._
+
+import ast._
+import parser._
+import Semantic._
 
 object ExprEval {
+    private var expressions: List[A] = Nil
 
-    private def binOpEval(a1 : A, a2 : A, op: (A, A) => A) : Either[SemanticError, A] = {
-        // check overflow if ints
-        return Right(op(a1, a2))
-    }
+    // private def binOpEval(a1 : A, a2 : A, op: (Expr, Expr) => Expr) : Either[SemanticError, Expr] = {
+    //     // check overflow if ints
+    //     // return Right(op(a1, a2))
+    //     (a1, a2) match {
+    //         case (IntLit(x), IntLit(y)) =>
+    //             Right(IntLit(op(x, y)))
+    //         case (BoolLit(x), BoolLit(y)) =>
+    //             Right(BoolLit(op(x, y)))
+    //         case _ =>
+    //             Left(SemanticError("Type mismatch or operation not supported on given types"))
+    //     }
+    // }
 
-    def exprEval(expr: Either[SemanticError, Expr], s: String) : Either[SemanticError, Expr] = 
+    def exprEval(expr: Either[SemanticError, Expr], scopeLevel: String) : Either[SemanticError, Expr] = 
         expr match {
             // ERROR CHECKING
-            case err : SemanticError => Left(err)
+            case Left(error) => Left(error)        
 
             // IDENTIFIER
-            case Ident(s) => getValueFromTable(s)
+            case Right(Ident(name)) => getValueFromSymbolTable(s"$name-$scopelevel") match {
+                case Some(exprType) => Right(exprType) // returning expression or type??
+                case None => Left(SemanticError(s"Undefined identifier $name at scope $scopeLevel"))
+            }
 
             // LITERALS
-            case IntLit() | BoolLit() | CharLit() | StrLit() | ArrayElem() | Paran() | PairLit() => expr
-
-            // INTEGER OPERATIONS
-            case Add(e1, e2) |  Sub(e1, e2) |  Mul(e1, e2) |  Div(e1, e2) |  Mod(e1, e2) =>
-                (exprEval(e1, s), exprEval(e2, s)) match {
-                    case (IntLit(x), IntLit(y)) => Right(IntLit(binOpEval(x, y, expr match {
-                        case Add() => +
-                        case Sub() => -
-                        case Mul() => *
-                        case Div() => /
-                        case Mod() => %
-                    })))
-                    case (err1 : SemanticError, err2 : SemanticError) => Left(err1 + err2)
-                    case (err : SemanticError, _) | (_, err : SemanticError)  => Left(err)
+            case Right(literal @ (_: IntLit | _: BoolLit | _: CharLit | _: StrLit | _: ArrayElem)) => Right(literal.getType())
+                
+            // BIOP OPERATIONS
+            case Right(Add(e1, e2))  => 
+                (exprEval(Right(e1), scopeLevel), exprEval(Right(e2), scopeLevel)) match {
+                    case (Right(IntLit(_)), Right(IntLit(_))) => e1 + e2
                 }
+
+            case Right(expression : Expr) => expression match {
+                case Add(IntLit(x), IntLit(y)) => Right(x + y)
+                case Add(_, _) => throw 
+                // case Sub(_,_) => -
+                // case Mul() => *
+                // case Div() => /
+                // case Mod() => %
+             }
 
 
             // BOOLEAN OPERATIONS
@@ -77,4 +94,4 @@ object ExprEval {
             }
             case _ => Left(SemanticError("Undefined"))
         }
-    }
+}
