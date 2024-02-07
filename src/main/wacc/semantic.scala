@@ -26,7 +26,7 @@ object Semantic {
         }
     }
 
-    val funcTable : Map[Ident, List[Type]] = new HashMap[Ident, List[Type]]
+    val funcTable: scala.collection.mutable.Map[Ident, List[Type]] = new HashMap[Ident, List[Type]]()
 
     def checkSemantic(prog: Stmt) : Unit = {
         prog match {
@@ -110,23 +110,23 @@ object Semantic {
 
     def checkLit (lit: Expr, t: Type) : Either[List[SemanticError], Unit] = {
         lit match {
-            case IntLit(_) if expectedType == IntType => Right(())
-            case BoolLit(_) if expectedType == BoolType => Right(())
-            case CharLit(_) if expectedType == CharType => Right(())
-            case StrLit(_) if expectedType == StringType => Right(())
+            case IntLit(_) if t == IntType => Right(())
+            case BoolLit(_) if t == BoolType => Right(())
+            case CharLit(_) if t == CharType => Right(())
+            case StrLit(_) if t == StringType => Right(())
             case Ident(_) => Right(())
-            case ArrayElem(_, _) if expectedType == ArrayType => Right(())
-            case Paran(_) if expectedType == IntType => Right(())
-            case PairLit if expectedType == IntType => Right(())
+            case ArrayElem(_, _) if t == ArrayType => Right(())
+            case Paran(_) if t == IntType => Right(())
+            case PairLit if t == IntType => Right(())
             case default => Left(SemanticError("Type Mismatch"))
         }
     }
 
-    def checkStatementSemantic(stmt: Stmt, t: Type) : Either[List[SemanticError], Unit] = {
+    def checkStatementSemantic(stmt: Stmt, t: Type) : Either[List[Error], Unit] = {
         stmt match {
-            case Program(funcs, body) => {}
-            case Function(t, ident, body) => {}
-            case Skip => {}
+            case Program(funcs, body) => Right(()) 
+            case Function(t, ident, body) => Right(()) 
+            case Skip => Right(()) 
             case Declare(t, ident, rvalue) => {
                 symbolTable.get(ident.x) match {
                     case Some(_) => Left((SemanticError("Variable already declared: ${ident.x}")))
@@ -143,32 +143,43 @@ object Semantic {
                 checkLvalue(lvalue, IntType ) //int or char
                 checkLvalue(lvalue, CharType)
             }
-            case Free => {
+            case Free(_) => {
                 //array or pair
             }
-            case Return => {}
-            case Exit => {}
-            case Print => {}
-            case Println => {}
-            case IfThenElse => {}
-            case WhileDo => {}
-            case BeginEnd => {}
-            case StmtList => {}
+            case Return(_) => Right(()) 
+            case Exit(_) => Right(()) 
+            case Print(_) => Right(()) 
+            case Println(_) => Right(()) 
+            case IfThenElse(_, _, _) => Right(()) 
+            case WhileDo(_, _) => Right(()) 
+            case BeginEnd(_) => Right(()) 
+            case StmtList(_, _) => Right(()) 
         }
     }
 
     def checkLvalue(v: Lvalue) : Either[List[SemanticError], Type] = {
-        v match {
-            case ArrayLit => {}
-            case NewPair => {}
-            case Call => {}
-        }
+     //   v match {
+     //       case ArrayLit => {}
+     //       case Call => {}
+     //   }
     }
 
-    def checkRvalue(v: Rvalue) : Type = {
+    def checkRvalue(v: Rvalue, t: Type) : Either[List[SemanticError], Unit]  = {
         v match {
-            case ArrayLit(x) => {}
-            case NewPair(x1, x2) => {}
+            case ArrayLit(x) => {
+                x match { 
+                    case Some(list) => 
+                        for (e <- list) {
+                            checkExprSemantic(e, t)
+                        }
+                    case None => 
+                        Right(()) 
+                }
+            }
+            case NewPair(x1, x2) => {
+                checkExprSemantic(x1, t)
+                checkExprSemantic(x2, t)
+            }
             case Call(i, x) => {}
         }
     }

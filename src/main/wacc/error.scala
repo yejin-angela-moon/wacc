@@ -25,12 +25,12 @@ trait Error {
   }
 }
 
-object syntaxError extends Error {
+object SyntaxError extends Error {
   override val errorType = "Syntax"
   override def exitStatus() : Int = 100
 }
 
-object semanticError extends Error {
+object SemanticError extends Error {
   override val errorType = "Semantic"
   override def exitStatus() : Int = 200
 }
