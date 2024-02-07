@@ -10,13 +10,11 @@ object Semantic {
     val symbolTable : Map[Ident, Type] = new HashMap[Ident, Type]
     val funcTable : Map[Ident, List[Type]] = new HashMap[Ident, List[Type]]
 
-    class funcInfo()
-
     def checkSemantic(prog: Stmt) : Unit = {
         prog match {
-            case Program =>
-                prog.funcs.foreach(f => checkStatmentSemantic(f))
-                checkStatementSemantic(prog.body)
+            case Program (funcs, body) =>
+                checkStatementSemantic(body)
+                funcs.foreach(f => checkStatmentSemantic(f))
             case default => System.exit(0)}
     }
 
@@ -166,6 +164,5 @@ object CheckType {
 
     import scala.language.implicitConversions
 
-    
 
 }
