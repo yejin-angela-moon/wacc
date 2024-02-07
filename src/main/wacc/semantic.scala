@@ -7,7 +7,25 @@ import ast._
 object Semantic {
   //Array
 
-    val symbolTable : Map[Ident, Type] = new HashMap[Ident, Type]
+    val symTable: scala.collection.mutable.Map[String, Type] = HashMap[String, Type]()
+
+    def lookUp (name: String): Type = {
+        symTable.get(name).get
+    }
+
+    def assign (name: String, newType: Type) = {
+        if (symTable.contains(name)) {
+            val oldType:Type = lookUp (name)
+            if (oldType != newType) {    
+                //error
+            } else {
+                symTable.update(name, newType)
+            }
+        } else {
+            symTable.addOne(name, newType)
+        }
+    }
+
     val funcTable : Map[Ident, List[Type]] = new HashMap[Ident, List[Type]]
 
     def checkSemantic(prog: Stmt) : Unit = {
@@ -97,9 +115,9 @@ object Semantic {
             case CharLit(_) if expectedType == CharType => Right(())
             case StrLit(_) if expectedType == StringType => Right(())
             case Ident(_) => Right(())
-            case ArrayElem(_) if expectedType == ArrayType => Right(())
+            case ArrayElem(_, _) if expectedType == ArrayType => Right(())
             case Paran(_) if expectedType == IntType => Right(())
-            case PairLit(_) if expectedType == IntType => Right(())
+            case PairLit if expectedType == IntType => Right(())
             case default => Left(SemanticError("Type Mismatch"))
         }
     }
