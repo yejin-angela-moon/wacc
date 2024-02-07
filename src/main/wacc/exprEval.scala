@@ -22,7 +22,7 @@ object ExprEval {
             case IntLit() | BoolLit() | CharLit() | StrLit() | ArrayElem() | Paran() | PairLit() => expr
 
             // INTEGER OPERATIONS
-            case Add(e1, e2) |  Sub(e1, e2) |  Mul(e1, e2) |  Div(e1, e2) |  Mod(e1, e2) => 
+            case Add(e1, e2) |  Sub(e1, e2) |  Mul(e1, e2) |  Div(e1, e2) |  Mod(e1, e2) =>
                 (exprEval(e1, s), exprEval(e2, s)) match {
                     case (IntLit(x), IntLit(y)) => Right(IntLit(binOpEval(x, y, expr match {
                         case Add() => +
@@ -53,7 +53,7 @@ object ExprEval {
                     case (err : List[A], _) | (_, err : List[A])  => Left(err)
                     case _ => Left(SemanticError("Not Int type"))
                 }
-           
+
             case Not(e) => exprEval(e) match {
                 case BoolLit(x) =>  Right(BoolLit(!x))
                 case _ => Left()

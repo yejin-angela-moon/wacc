@@ -32,7 +32,7 @@ object Semantic {
                 val res2 = checkRvalue(rvalue, scopeLevel)
 
                 (res1, res2) match {
-                    case (Right(t1), Right(t2)) => 
+                    case (Right(t1), Right(t2)) =>
                         if (t1 == t2) {
                             Right(())
                         } else {
