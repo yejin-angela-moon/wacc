@@ -2,27 +2,30 @@ package wacc
 
 import parsley._
 import SemanticError._
+import ast._
+
+
 
 object ExprEval {
 
-    private def binOpEval(a1 : A, a2 : A, op: (A, A) => A) : Either[SemanticError, A] = {
+    private def binOpEval[A](a1 : A, a2 : A, op: (A, A) => A) : Either[SemanticError, A] = {
         // check overflow if ints
         return Right(op(a1, a2))
     }
 
-    def exprEval(expr: Either[SemanticError, Expr], s: String) : Either[SemanticError, Expr] = 
+    def exprEval[A](expr: Either[SemanticError, Expr], s: String) : Either[SemanticError, Expr] = 
         expr match {
             // ERROR CHECKING
             case err : SemanticError => Left(err)
 
             // IDENTIFIER
-            case Ident(s) => getValueFromTable(s)
+       //     case Ident(s) => getValueFromTable(s)
 
             // LITERALS
-            case IntLit() | BoolLit() | CharLit() | StrLit() | ArrayElem() | Paran() | PairLit() => expr
+            case IntLit(_) | BoolLit(_) | CharLit(_) | StrLit(_) | ArrayElem(_,_) | Paran(_) | PairLit => Right(expr)
 
             // INTEGER OPERATIONS
-            case Add(e1, e2) |  Sub(e1, e2) |  Mul(e1, e2) |  Div(e1, e2) |  Mod(e1, e2) =>
+            case Add(e1, e2) |  Sub(e1, e2) |  Mul(e1, e2) |  Div(e1, e2) |  Mod(e1, e2) => 
                 (exprEval(e1, s), exprEval(e2, s)) match {
                     case (IntLit(x), IntLit(y)) => Right(IntLit(binOpEval(x, y, expr match {
                         case Add() => +
@@ -53,7 +56,7 @@ object ExprEval {
                     case (err : List[A], _) | (_, err : List[A])  => Left(err)
                     case _ => Left(SemanticError("Not Int type"))
                 }
-
+           
             case Not(e) => exprEval(e) match {
                 case BoolLit(x) =>  Right(BoolLit(!x))
                 case _ => Left()
