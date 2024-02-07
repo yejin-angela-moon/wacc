@@ -1,28 +1,30 @@
 package wacc
 import scala.collection.mutable.ListBuffer
 
-trait Error {
-  val errorType : String
-  val log: ListBuffer[String] = ListBuffer.empty[String]
+object Error {
+//   val errorType : String
+//   val log: ListBuffer[String] = ListBuffer.empty[String]
 
-  def addError(msg : String) = {
-    log += msg
-  }
+//   def addError(msg : String) = {
+//     log += msg
+//   }
 
-  def printError() = {
-    println(s"The number of error is ${log.size.toString()}.")
-    for (msg <- log) {
-      println(s"$errorType Error: $msg")
-    }
-  }
+//   def printError() = {
+//     println(s"The number of error is ${log.size.toString()}.")
+//     for (msg <- log) {
+//       println(s"$errorType Error: $msg")
+//     }
+//   }
 
-  def exitStatus() : Int
+//   def exitStatus() : Int
 
-  def hasError: Boolean = log.nonEmpty
-    
-  def resetError() = {
-    log.clear()
-  }
+//   def hasError: Boolean = log.nonEmpty
+
+//   def resetError() = {
+//     log.clear()
+//   }
+
+  case class SemanticError(msg: String)
 }
 
 object syntaxError extends Error {
@@ -30,9 +32,11 @@ object syntaxError extends Error {
   override def exitStatus() : Int = 100
 }
 
-object semanticError extends Error {
-  override val errorType = "Semantic"
-  override def exitStatus() : Int = 200
-}
+// object SemanticError extends Error {
+
+//     case class SemanticError()
+//   override val errorType = "Semantic"
+//   override def exitStatus() : Int = 200
+// }
 
 

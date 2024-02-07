@@ -50,7 +50,7 @@ object ast {
     case class Program(funcs: List[Func], body: Stmt) extends Stmt
 
     /* Function */
-    case class Func(t: Type, ident: Ident, list: ParamList, body: Stmt)
+    case class Func(t: Type, ident: Ident, list: ParamList, body: Stmt) extends Stmt
 
     /* Parameter List */
     case class ParamList(params: List[Param])
