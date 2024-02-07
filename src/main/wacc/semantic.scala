@@ -4,150 +4,168 @@ import scala.collection.mutable.{HashMap}
 import parsley.{Result, Success, Failure}
 import ast._
 
-object symbolTable {
-    //map between the variable(ident) name and the type
-    //so everytime the assign somehitng create new entry
-    // when reassgin check the table if the rvalue have the same typw as the variable using the table
-    // check scope (change the name)
-    // array check a[i] if i is in range
-    //
-    Map[String, Type] symTable = new HashMap[String, Type]
-}
-
 object Semantic {
   //Array
+
+    val symbolTable : Map[Ident, Type] = new HashMap[Ident, Type]
+    val funcTable : Map[Ident, List[Type]] = new HashMap[Ident, List[Type]]
+
+    class funcInfo()
+
     def checkSemantic(prog: Stmt) : Unit = {
         prog match {
             case Program =>
-                checkStatementSemantic(prog.body)
                 prog.funcs.foreach(f => checkStatmentSemantic(f))
+                checkStatementSemantic(prog.body)
             case default => System.exit(0)}
     }
 
-    def checkExprSemantic(expr: Expr) : Unit = {
+    def checkExprSemantic(expr: Expr, t: Type) : Either[List[SemanticError], Unit] = {
         expr match {
             case Add(e1, e2) => {
-                checkExprSemantic(e1)
-                checkExprSemantic(e2)
+                checkExprSemantic(e1, IntType)
+                checkExprSemantic(e2, Inttype)
             }
             case Sub(e1, e2) => {
-                checkExprSemantic(e1)
-                checkExprSemantic(e2)
+                checkExprSemantic(e1, IntType)
+                checkExprSemantic(e2, IntType)
             }
             case Mul(e1, e2) => {
-                checkExprSemantic(e1)
-                checkExprSemantic(e2)
+                checkExprSemantic(e1, IntType)
+                checkExprSemantic(e2, IntType)
             }
             case Div(e1, e2) => {
-                checkExprSemantic(e1)
-                checkExprSemantic(e2)
+                checkExprSemantic(e1, IntType)
+                checkExprSemantic(e2, IntType)
             }
             case Mod(e1, e2) => {
-                checkExprSemantic(e1)
-                checkExprSemantic(e2)
+                checkExprSemantic(e1, IntType)
+                checkExprSemantic(e2, IntType)
             }
             case And(e1, e2) => {
-                checkExprSemantic(e1)
-                checkExprSemantic(e2)
+                checkExprSemantic(e1, BoolType)
+                checkExprSemantic(e2, BoolType)
             }
             case Or(e1, e2) => {
-                checkExprSemantic(e1)
-                checkExprSemantic(e2)
+                checkExprSemantic(e1, BoolType)
+                checkExprSemantic(e2, BoolType)
             }
             case LT(e1, e2) => {
-                checkExprSemantic(e1)
-                checkExprSemantic(e2)
+                checkExprSemantic(e1, IntType)
+                checkExprSemantic(e2, IntType)
             }
             case LTE(e1, e2) => {
-                checkExprSemantic(e1)
-                checkExprSemantic(e2)
+                checkExprSemantic(e1, IntType)
+                checkExprSemantic(e2, IntType)
             }
             case GT(e1, e2) => {
-                checkExprSemantic(e1)
-                checkExprSemantic(e2)
+                checkExprSemantic(e1, IntType)
+                checkExprSemantic(e2, IntType)
             }
             case GTE(e1, e2) => {
-                checkExprSemantic(e1)
-                checkExprSemantic(e2)
+                checkExprSemantic(e1, IntType)
+                checkExprSemantic(e2, IntType)
             }
             case E(e1, e2) => {
-                checkExprSemantic(e1)
-                checkExprSemantic(e2)
+                checkExprSemantic(e1, IntType)
+                checkExprSemantic(e2, IntType)
             }
             case NE(e1, e2) => {
-                checkExprSemantic(e1)
-                checkExprSemantic(e2)
+                checkExprSemantic(e1, IntType)
+                checkExprSemantic(e2, IntType)
             }
             case Not(e1) => {
-                checkExprSemantic(e1)
+                checkExprSemantic(e1, BoolType)
             }
             case Neg(e1) => {
-                checkExprSemantic(e1)
+                checkExprSemantic(e1, IntType)
             }
             case Len(e1) => {
-                checkExprSemantic(e1)
+                checkExprSemantic(e1, ArrayType)
             }
             case Ord(e1) => {
-                checkExprSemantic(e1)
+                checkExprSemantic(e1, CharType)
             }
             case Chr(e1) => {
-                checkExprSemantic(e1)
+                checkExprSemantic(e1, CharType)
             }
             case default => checkLit(expr)
         }}
 
-    def checkLit (lit: Expr) : Unit = {
+    def checkLit (lit: Expr, t: Type) : Either[List[SemanticError], Unit] = {
         lit match {
-            case IntLit => {}
-            case BoolLit => {}
-            case CharLit => {}
-            case StrLit => {}
-            case Ident => {}
-            case ArrayElem => {}
-            case Paran => {}
-            case PairLit => {}
+            case IntLit(_) if expectedType == IntType => Right(())
+            case BoolLit(_) if expectedType == BoolType => Right(())
+            case CharLit(_) if expectedType == CharType => Right(())
+            case StrLit(_) if expectedType == StringType => Right(())
+            case Ident(_) => Right(())
+            case ArrayElem(_) if expectedType == ArrayType => Right(())
+            case Paran(_) if expectedType == IntType => Right(())
+            case PairLit(_) if expectedType == IntType => Right(())
+            case default => Left(SemanticError("Type Mismatch"))
         }
     }
 
-    def checkFunctionList(list: List[Func]) : Unit = {
-
+    def checkStatementSemantic(stmt: Stmt, t: Type) : Either[List[SemanticError], Unit] = {
+        stmt match {
+            case Program(funcs, body) => {}
+            case Function(t, ident, body) => {}
+            case Skip => {}
+            case Declare(t, ident, rvalue) => {
+                symbolTable.get(ident.x) match {
+                    case Some(_) => Left((SemanticError("Variable already declared: ${ident.x}")))
+                    case None =>
+                        symbolTable(ident.x) = t
+                        checkRvalue(rvalue, t)
+                }
+            }
+            case Assign(lvalue, rvalue) => {
+                val t = checkLvalue(lvalue)
+                checkRvalue(rvalue, t)
+            }
+            case Read(lvalue) => {
+                checkLvalue(lvalue, IntType ) //int or char
+                checkLvalue(lvalue, CharType)
+            }
+            case Free => {
+                //array or pair
+            }
+            case Return => {}
+            case Exit => {}
+            case Print => {}
+            case Println => {}
+            case IfThenElse => {}
+            case WhileDo => {}
+            case BeginEnd => {}
+            case StmtList => {}
+        }
     }
 
-    def checkStatementSemantic(stmt: Stmt) : Unit = {
+    def checkLvalue(v: Lvalue) : Either[List[SemanticError], Type] = {
+        v match {
+            case ArrayLit => {}
+            case NewPair => {}
+            case Call => {}
+        }
+    }
 
+    def checkRvalue(v: Rvalue) : Type = {
+        v match {
+            case ArrayLit(x) => {}
+            case NewPair(x1, x2) => {}
+            case Call(i, x) => {}
+        }
     }
 
     def checkTypeSemantic(stmt: Stmt) : Unit = {
 
     }
+}
 
-// // def checkSemantic(expr: Expr, error: Error): Type = {
-// //   expr match {
-// //     case Var(_, varType) => varType
-// //     case ArrayLiteral(elements, elementType, isFrozen) =>
-// //       elements.foreach(checkSemantic(_, error))
-// //       ArrayType(elementType, isFrozen)
-// //     case ArrayAccess(arr, index) =>
-// //       val ArrayType(elementType, _) = checkSemantic(arr, error)
-// //       val indexType = checkSemantic(index, error)
-// //       if (indexType != IntType) {
-// //         error.addError("Array index must be of type Int.")
-// //       }
-// //       elementType
-// //     case ArrayModification(arr, index, newValue) =>
-// //       val ArrayType(elementType, isFrozen) = checkSemantic(arr, error)
-// //       val indexType = checkSemantic(index, error)
-// //       if (indexType != IntType) {
-// //         error.addError("Array index must be of type Int.")
-// //       }
-// //       val newValueType = checkSemantic(newValue, error)
-// //       if (isFrozen) {
-// //         error.addError("Cannot modify a frozen array.")
-// //       }
-// //       if (newValueType != elementType) {
-// //         error.addError("New value type does not match array element type.")
-// //       }
-// //       elementType
-// //   }
-// // }
+object CheckType {
+
+    import scala.language.implicitConversions
+
+    
+
 }
