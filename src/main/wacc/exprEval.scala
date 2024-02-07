@@ -9,7 +9,9 @@ import ast._
 object ExprEval {
 
     private def binOpEval[A](a1 : A, a2 : A, op: (A, A) => A) : Either[SemanticError, A] = {
-        // check overflow if ints
+        if (a1.instanceOf[Int]) {
+            // apply casting to BigInt
+        }
         return Right(op(a1, a2))
     }
 

@@ -96,7 +96,16 @@ object Semantic {
             case Println(x) => Right(())//check the type of x
         }
     }
-5
+
+    def getEntry(x: String): Result[List[Error], Expr] = {
+        symbolTable.get(x) match {
+            // case Some(value) => Success(value)
+            // case None => Failure(["Undefined refrence for variable:" + x])
+            case _ => Failure(List(SemanticError("Undefined refrence to table")))
+        }
+    }
+    
+
     def funcEval(func: Func, symbolTable: Map[String, Type], scopeLevel: String) = {
         val paramList = func.list
         val updatedSymbolTable = symbolTable ++ paramList.params.map(param => param.ident -> param.t).toMap
