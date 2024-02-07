@@ -11,7 +11,24 @@ object symbolTable {
     // check scope (change the name)
     // array check a[i] if i is in range
     //
-    Map[String, Type] symTable = new HashMap[String, Type]
+    val symTable: scala.collection.mutable.Map[String, Type] = HashMap[String, Type]()
+
+    def lookUp (name: String): Type = {
+        symTable.get(name).get
+    }
+
+    def assign (name: String, newType: Type) = {
+        if (symTable.contains(name)) {
+            val oldType:Type = lookUp (name)
+            if (oldType != newType) {    
+                //error?
+            } else {
+                symTable.update(name, newType)
+            }
+        } else {
+            symTable.addOne(name, newType)
+        }
+    }
 }
 
 object Semantic {
