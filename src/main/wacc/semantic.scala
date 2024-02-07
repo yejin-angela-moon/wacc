@@ -21,7 +21,7 @@ object symbolTable {
         if (symTable.contains(name)) {
             val oldType:Type = lookUp (name)
             if (oldType != newType) {    
-                //error?
+                //error
             } else {
                 symTable.update(name, newType)
             }
@@ -35,9 +35,9 @@ object Semantic {
   //Array
     def checkSemantic(prog: Stmt) : Unit = {
         prog match {
-            case Program =>
-                checkStatementSemantic(prog.body)
-                prog.funcs.foreach(f => checkStatmentSemantic(f))
+            case Program (funcs, body) =>
+                checkStatementSemantic(body)
+                funcs.foreach(f => checkStatmentSemantic(f))
             case default => System.exit(0)}
     }
 
