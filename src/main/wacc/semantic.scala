@@ -195,3 +195,53 @@ object CheckType {
 
 
 }
+
+case class ArrayElem(ident: Ident, x: List[Expr]) extends Expr with Lvalue {
+        def typeCheck(symTable: Map[String, Type]): Either[Error, Type] = {
+            val semanticError = SemanticError
+            symTable.get(ident.name) match {  //TODO 
+            case Some(ArrayType(elementType)) => 
+            if (elementType == PairType) {
+                semanticError.addError("Array element type cannot be an erased pair")
+                Left(semanticError)
+            } else {
+                val t = x.head.getClass()
+                if (x.forall(_.getClass == t)) {
+                   Right(ArrayType(t))
+                
+                } else {
+                    val distinctType = x.map(_.getClass).distinct
+
+                    if (distinctType.length == 1) {
+
+                        if (elementType.isArray && elementType != ArrayType) {
+                            semanticError.addError("Arrays are invariant in their type parameter")
+                            Left(semanticError)
+                        } else if (distinctType == CharLit && ident.getType() == String) {
+                            Right(ArrayType(CharType))
+                        } else {
+                            if (elementType != StringType) {
+                               Right(ArrayType(elementType))
+                            } else {
+                                semanticError.addError("A string cannot take place of char[]")
+                                Left(semanticError)
+                            }
+                        }
+                    } else {
+                        val  lca = lowestCommonAncestor(distinctType)
+                        Right(ArrayType(lca))
+                    }
+                }
+            }
+            case Some(_) =>
+                semanticError.addError(s"${ident.name} is not an array")
+                Left(semanticError)
+            case None =>
+                semanticError.addError(s"${ident.name} is not declared")
+                Left(semanticError)
+            }
+        }
+
+        def lowestCommonAncestor() = {} //TODO
+        
+    }
