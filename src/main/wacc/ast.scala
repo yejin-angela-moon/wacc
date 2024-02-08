@@ -28,9 +28,6 @@ object SemanticManager {
     def overflow(x: BigInt, y: BigInt, op: (BigInt, BigInt) => BigInt) : Result[List[Error], Expr] = {
         // if(true /* overflow detected*/)
         //     return Failure(new RuntimeException("Overflow detected"))
-        if ((x > (2^31 - 1)) || (x < (-2^31)) || (y >( 2^31-1)) || (y < (-2^31))) {
-            System.exit(255)
-        }
         return Success(IntLit(op(x,y)))
     }
 }
@@ -210,9 +207,6 @@ object ast {
     }
     case class ArrayElem(ident: Ident, x: List[Expr]) extends Expr with Lvalue {
         def eval(scope: String): Result[List[Error],Expr] = Success(this)
-    }
-    case class Paran(x: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = x.eval(scope)
     }
     case object PairLit extends Expr with ParserBridge0[Expr] {
         def eval(scope: String): Result[List[Error],Expr] = Success(this)

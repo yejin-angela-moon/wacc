@@ -8,7 +8,16 @@
 
 # Program:
 
-begin
-  int x = 10 ;
+begin 
+  int x = 10 ; 
   x = x + y
 end
+
+#res1 = stmtCheck(int x = 10, "-b") = stmtCheck(Declare(int, x, 10))
+#type = int, ident = x, rvalue = IntLit(10)
+#scopeVar = "x-b"
+#checkRvalue(IntLit(10), "-b") = findType(IntLit(10).asInstanceOf[Expr], "-b")
+#MUST BE IntType
+#res2 = stmtCheck(x = x + y, "-b")
+# checkBinaryOp(ident(x), ident(y), )
+

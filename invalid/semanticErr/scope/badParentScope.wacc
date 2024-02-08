@@ -18,3 +18,4 @@ begin
     int[] x = [1]
   end
 end
+
