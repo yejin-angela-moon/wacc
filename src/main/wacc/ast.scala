@@ -281,7 +281,7 @@ object ast {
     case object StringType extends BaseType with ParserBridge0[BaseType]
 
     /* Any-Type */
-    case object AnyType extends Type with BaseType with PairElemType 
+    case object AnyType extends Type with PairElemType
 
     object Div extends ParserBridge2[Expr, Expr, Expr]
     object Mod extends ParserBridge2[Expr, Expr, Expr]

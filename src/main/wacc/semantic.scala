@@ -122,7 +122,7 @@ object Semantic {
                 case Left(value) => Left(value)
             }
             case Return(x) => (findType(x, scopeLevel), getCurrentFunctionReturnType(scopeLevel)) match {
-                case (Right(t1), Right(t2)) if t1 == t2 => Right(())
+                case (Right(t1), Right(t2)) if typeMatch(t1, t2) => Right(())
                 case (Right(t1), Right(t2)) => Left(List(SemanticError("Return type mismatch")))
                 case (Left(e1), Left(e2)) => Left(e1 ++ e2)
                 case (_, Left(e)) => Left(e)
@@ -242,9 +242,14 @@ object TypeCheck {
                             expectedOutputType: Type, scopeLevel: String) :
                                 Either[List[SemanticError], Type] = {
         (findType(x, scopeLevel)) match {
-            case Right(t1) if expectedType(t1) =>
-                Right(expectedOutputType)
-            case _ => Left(List(SemanticError("Type mismatch for unary operation")))
+            case Right(t1) => t1 match {
+                case ArrayType(t) => Right(ArrayType(t))
+                case PairType(p1, p2) => Right(PairType(p1, p2))
+                case _ if expectedType(t1) =>
+                    Right(expectedOutputType)
+                case _ => Left(List(SemanticError("Type mismatch for unary operation")))
+            }
+            case Left(err) => Left(err)
         }
     }
 
@@ -265,24 +270,11 @@ object TypeCheck {
                     }
                     case Left(value) => Left(value)
                 }
-                
-            
-            // for {
-            //     headType <- findType(head, scopeLevel)
-            //     _ <- tail.forall(expr =>
-            //         findType(expr, scopeLevel) match {
-            //             case Right(t) => t == headType
-            //             case _ => false
-            //     }) match {
-            //         case true => Right(ArrayType(headType))
-            //         case false => Left(List(SemanticError("Array elements must be of the same type.")))
-            //     }
-            // } yield headType
-           
         }
     }
 
     val everyType: Set[Type] = Set(PairType(AnyType, AnyType), ArrayType(AnyType), IntType, BoolType, CharType, StringType)
+    // val everyArrayType: Set[Type] = Set()
 
     def findType(expr : Expr, scopeLevel : String) : Either[List[SemanticError], Type] = {
         expr match {
@@ -339,15 +331,12 @@ object TypeCheck {
 
     def checkTypes(e1: Expr, e2: Expr, scopeLevel: String) : Boolean = {
         (findType(e1, scopeLevel), findType(e2, scopeLevel)) match {
-            case (Right(t1), Right(t2)) => t1 == t2
+            case (Right(t1), Right(t2)) => typeMatch(t1, t2)
             case _ => false
         }
     }
 
-    def typeMatch(e: Expr, scopeLevel: String, expectedType: Set[Type]) : Boolean = {
-        (findType(e, scopeLevel)) match {
-            case Right(t) => expectedType(t)
-            case _ => false
-        }
+    def typeMatch(t1: Type, t2: Type) : Boolean = {
+        t1 == AnyType || t2 == AnyType || t1 == t2
     }
 }
