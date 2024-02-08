@@ -5,7 +5,6 @@ import parsley.Failure
 import parsley.Success
 import java.io._
 import scala.util._
-import GetOutput._
 
 class InvalidSemantic extends AnyFunSuite {
   import TestSemantics.testSemantics
@@ -16,10 +15,10 @@ class InvalidSemantic extends AnyFunSuite {
   val subDirs = validDir.listFiles()
 
   for(subDir <- subDirs) {
-    println ("Cheking invalid files in \"" + subDir.getPath().substring("invalid/semanticErr/".length()) + "\"") 
+    println ("Checking invalid files in \"" + subDir.getPath().substring("invalid/semanticErr/".length()) + "\"") 
     for(validFile <- subDir.listFiles()) {
-      
-     
+
+
       if (validFile.isFile()) {
          // Files
 
@@ -52,7 +51,7 @@ object TestSemantics {
           return "failure"
         }
       }
-      case Failure(msg) => "PARSER FAIL" 
+      case Failure(msg) => "PARSER FAIL"
 
     }
   }

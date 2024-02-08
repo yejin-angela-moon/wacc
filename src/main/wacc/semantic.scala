@@ -14,8 +14,6 @@ object Semantic {
     def getValueFromTable(key: String): Either[List[SemanticError], Type] = {
         @annotation.tailrec
         def search(scopeVar: String): Either[List[SemanticError], Type] = {
-            // println(symbolTable)
-            // println("adfd - " + scopeVar)
             symbolTable.get(scopeVar) match {
             case Some(value) => Right(value)
             case None =>
@@ -52,8 +50,6 @@ object Semantic {
                                         symbolTable.addOne(scopeVarible -> value)
                                     else
                                         symbolTable.addOne(scopeVarible -> t)
-                                    // println("the hashtable = " + symbolTable)
-                                    // println(ident.x)
                                     Right(())}
                                 else if (value :> t)
                                     Left(List(SemanticError(s"Tried assigning stronger $value value to weaker $t")))
@@ -139,8 +135,8 @@ object Semantic {
                 case Left(value) => Left(value)
             }
             case Return(x) => (findType(x, scopeLevel), getCurrentFunctionReturnType(scopeLevel)) match {
-                case (Right(t1), Right(t2)) if typeMatch(t1, t2) => Right(())
-                case (Right(t1), Right(t2)) => Left(List(SemanticError("Return type mismatch")))
+                case (Right(t1), Right(t2)) if t2 :> t1 => Right(())
+                case (Right(t1), Right(t2)) => Left(List(SemanticError(s"Return type mismatch\nExpected: $t2 Actual: $t1")))
                 case (Left(e1), Left(e2)) => Left(e1 ++ e2)
                 case (_, Left(e)) => Left(e)
                 case (Left(e), _) => Left(e)
@@ -154,7 +150,8 @@ object Semantic {
                 case Right(_) => Right(())
                 case Left(errors) => Left(errors)
             }
-            case Println(x) => findType(x, scopeLevel) match {
+            case Println(x) => 
+                findType(x, scopeLevel) match {
                 case Right(_) => Right(())
                 case Left(errors) => Left(errors)
             }
@@ -179,7 +176,9 @@ object Semantic {
                 case _ => Left(List(SemanticError("Can only use fst on pair type"))) 
             }
             case Snd(lvalue) => checkLvalue(lvalue, scopeLevel) match {
-                case Right(PairType(a, b)) => Right(fromPairElemType(b))
+                case Right(PairType(a, b)) => 
+                    print("the value of b is " + b)
+                    Right(fromPairElemType(b))
                 case Right(NullType) => Right(NullType)
                 case _ => Left(List(SemanticError("Can only use snd on pair type"))) 
             }
@@ -201,10 +200,15 @@ object Semantic {
                 } yield PairType(pairElemType1, pairElemType2)
 
             case Call(ident, x) => getValueFromTable(ident.x + scopeLevel)
-            case Fst(lvalue) => checkLvalue(lvalue, scopeLevel) match {
+            case Fst(lvalue) => 
+                println("the lvalue is " + lvalue)
+                checkLvalue(lvalue, scopeLevel) match {
                 case Right(PairType(a, b)) => Right(fromPairElemType(a))
                 case Right(NullType) => Right(NullType)
-                case _ => Left(List(SemanticError("Can only use fst on pair type"))) 
+                case a => 
+                    println(a)
+                    println(symbolTable)
+                    Left(List(SemanticError("Can only use fst on pair type"))) 
             }
             case Snd(lvalue) => checkLvalue(lvalue, scopeLevel) match {
                 case Right(PairType(a, b)) => Right(fromPairElemType(b))
@@ -300,17 +304,6 @@ object TypeCheck {
             }
         }
 
-    // private def checkComparisonOp(x: Expr, y: Expr, scopeLevel: String) : Either[List[SemanticError], Type] = {
-    //     (findType(x, scopeLevel), findType(y, scopeLevel)) match {
-    //         case (Right(t1), Right(t2)) => (t1, t2) match {
-    //             case (CharType, CharType) => Right(CharType)
-    //             case (IntType, IntType) => Right(IntType)
-    //             case _ => Left(List(SemanticError("Type mismatch\nExpected: Char or Int Actual: " + t1)))
-    //         }
-    //         case _ => Left(List(SemanticError("Type mismatch for binary operation")))
-    //     }
-    // }
-
     private def checkUnaryOp(x: Expr, expectedType: Set[Type],
                             expectedOutputType: Type, scopeLevel: String) :
                                 Either[List[SemanticError], Type] = {
@@ -379,6 +372,7 @@ object TypeCheck {
             case ArrayElem(ident, exprList) =>
                 getValueFromTable(ident.x + scopeLevel).flatMap {
                     case ArrayType(t) =>
+                        val arrayDepth = getArraydepth(1, t)
                         val indexTypeChecks = exprList.map(findType(_, scopeLevel))
                         val indexErrors = indexTypeChecks.collect { case Left(errs) => errs }.flatten
 
@@ -386,6 +380,10 @@ object TypeCheck {
                             Left(indexErrors)
                         } else {
                             // Ensure all index types are IntType
+                            if (arrayDepth < indexTypeChecks.length)
+                                return Left(List(SemanticError(s"Unexpected at least ${indexTypeChecks.length}-dimensional array")))
+
+
                             val allIndicesAreInt = indexTypeChecks.forall {
                                 case Right(IntType) => true
                                 case _ => false
@@ -401,6 +399,13 @@ object TypeCheck {
                 }
             case Paran(x) => findType(x, scopeLevel)
             case PairLit => Right(NullType)
+        }
+    }
+
+    def getArraydepth(depth: Int, array: Type): Int = {
+        array match {
+            case ArrayType(t) => getArraydepth(depth + 1, t)
+            case _ => depth
         }
     }
 

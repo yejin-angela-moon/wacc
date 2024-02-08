@@ -289,6 +289,7 @@ object ast {
     implicit class TypeBinOp(t: Type) {
         def :>(that: Type) : Boolean = (t, that) match {
             case (AnyType, _) => true
+            case (NullType, AnyType) => false
             case (_, AnyType | NullType) => true
 
             case (NullType, x : PairType) => true
