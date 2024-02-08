@@ -251,10 +251,14 @@ object Semantic {
 
     def getCurrentFunctionReturnType(scopeLevel: String): Either[List[SemanticError], Type] = {
         val getFunctionName = scopeLevel.split("-")
-        symbolTable.get(getFunctionName(1)) match {
-            case Some(returnType) => Right(returnType)
-            case None => Left(List(SemanticError("return outside of function is not allowed")))
+        (getFunctionName.lengthCompare(1) < 0) match {
+            case true => Left(List(SemanticError("return from main is not allowed")))
+            case false => symbolTable.get(getFunctionName(1)) match {
+                case Some(returnType) => Right(returnType)
+                case None => Left(List(SemanticError("return outside of function is not allowed")))
+            }
         }
+
     }
 
 
@@ -263,7 +267,7 @@ object Semantic {
 
         prog match {
             case Program(funcs, body) =>
-                (checkFuncsList(funcs), stmtCheck(body, "")) match {
+                (checkFuncsList(funcs), stmtCheck(body, "-g")) match {
                     case (Right(_), Right(_)) => Right(())
                     case (Left(err1), Left(err2)) => Left(err1 ++ err2)
                     case (Left(errs), _) => Left(errs)
