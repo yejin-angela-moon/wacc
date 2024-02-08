@@ -12,25 +12,23 @@ object Semantic {
     var symbolTable = new HashMap[String, Type]
 
     def getValueFromTable(key: String): Either[List[SemanticError], Type] = {
-        var scopeVar = key
-        symbolTable.get(scopeVar) match {
+        @annotation.tailrec
+        def search(scopeVar: String): Either[List[SemanticError], Type] = {
+            println(symbolTable)
+            println("adfd - " + scopeVar)
+            symbolTable.get(scopeVar) match {
             case Some(value) => Right(value)
             case None =>
-                while (scopeVar.contains("-")) {
-                    symbolTable.get(scopeVar) match {
-                        case Some(value) => {
-                            return Right(value)
-                        }
-                        case None => 
-                            scopeVar = scopeVar.substring(0, scopeVar.lastIndexOf("-"))
-                    }
+                val nextScopeVar = scopeVar.lastIndexOf("-") match {
+                case -1 => "" // No more scopes to backtrack
+                case index => scopeVar.substring(0, index)
                 }
-                symbolTable.get(scopeVar) match {
-                    case None => Left(List(SemanticError(s"unexpected identifier $key")))
-                    case Some(value) => Right(value)
-                }
-                
+                if (nextScopeVar.isEmpty) Left(List(SemanticError(s"Unexpected identifier $key")))
+                else search(nextScopeVar)
+            }
         }
+
+        search(key)
     }
 
 
@@ -43,19 +41,23 @@ object Semantic {
                 var scopeVarible = s"${ident.x}$scopeLevel"
 
                 symbolTable.get(scopeVarible) match {
-                    case Some(_) => Left(List(SemanticError(s"Variable $ident already declared.")))
+                    case Some(_) => 
+                        Left(List(SemanticError(s"Variable ${ident.x} already declared.")))
 
                     case None =>
                         checkRvalue(rvalue, scopeLevel) match {
                             case Right(value) => {
-                                if(t :> value)
-                                    return Right(())
-
-                                if (value :> t)
-                                    return Left(List(SemanticError(s"Tried assigning stronger $value value to weaker $t")))
-                                
-                                return Left(List(SemanticError(s"Declare type mismatch\nExpected: $t Actual: $value")))
+                                if(t :> value){
+                                    symbolTable.addOne(scopeVarible -> t)
+                                    println("the hashtable = " + symbolTable)
+                                    println(ident.x)
+                                    Right(())}
+                                else if (value :> t)
+                                    Left(List(SemanticError(s"Tried assigning stronger $value value to weaker $t")))
+                                else
+                                    Left(List(SemanticError(s"Declare type mismatch\nExpected: $t Actual: $value")))
                             }
+
 
                             case Left(value) => Left(value)
                         }
@@ -210,26 +212,31 @@ object Semantic {
     }
 
     def checkFuncsList(funcs: List[Func]): Either[List[SemanticError], Unit] = {
+        funcs.foreach(f =>
+            symbolTable.get(f.ident.x) match {
+                case Some(value) => Left(List(SemanticError(s"Function redefinition error: illegal redefinition of function ${f.ident.x}")))
+                case None => symbolTable.addOne(f.ident.x -> f.t)
+            }
+        )
+
         funcs.foldLeft[Either[List[SemanticError], Unit]](Right(())) { (acc, func) =>
             acc.flatMap { _ =>
-                getValueFromTable(func.ident.x) match {
-                    case Right(_) =>
-                        Left(List(SemanticError(s"Function ${func.ident.x} is already defined.")))
-                    case Left(_) =>
-                        symbolTable.addOne(func.ident.x -> func.t)
-                        func.list.params.foreach {
-                            param =>
-                                val paramNameWithScope = s"${param.ident.x}-${func.ident.x}"
-                                symbolTable.addOne(paramNameWithScope -> param.t)
-                        }
-                        stmtCheck(func.body, func.ident.x)
+
+                func.list.params.foreach {
+                    param =>
+                        val paramNameWithScope = s"${param.ident.x}-${func.ident.x}"
+                        println(paramNameWithScope)
+                        symbolTable.addOne(paramNameWithScope -> param.t)
                 }
+
+                stmtCheck(func.body, "-" + func.ident.x + "-b")
             }
         }
     }
 
     def getCurrentFunctionReturnType(scopeLevel: String): Either[List[SemanticError], Type] = {
-        symbolTable.get(scopeLevel) match {
+        val getFunctionName = scopeLevel.split("-")
+        symbolTable.get(getFunctionName(1)) match {
             case Some(returnType) => Right(returnType)
             case None => Left(List(SemanticError("return outside of function is not allowed")))
         }
@@ -241,7 +248,7 @@ object Semantic {
 
         prog match {
             case Program(funcs, body) =>
-                (checkFuncsList(funcs), stmtCheck(body, "-g")) match {
+                (checkFuncsList(funcs), stmtCheck(body, "")) match {
                     case (Right(_), Right(_)) => Right(())
                     case (Left(err1), Left(err2)) => Left(err1 ++ err2)
                     case (Left(errs), _) => Left(errs)
@@ -253,23 +260,24 @@ object Semantic {
 }
 
 object TypeCheck {
-    
+
     private def checkBinaryOp(x: Expr, y: Expr, expectedType: Set[Type],
                             expectedOutputType: Type, scopeLevel: String) :
-                                Either[List[SemanticError], Type] = 
+                                Either[List[SemanticError], Type] = {
         (findType(x, scopeLevel), findType(y, scopeLevel)) match {
             case (Right(t1), Right(t2)) => {
                     if(t1 :> t2 && t2 :> t1) {
                         if(expectedType.filter((x) => x :> t1).size >= 1)
-                            return Right(t1)
-                        
+                            return Right(expectedOutputType)
+
                         return Left(List(SemanticError("BinOp type mismatch\nExpected: " + expectedType + " Actual: " + t1)))
-                    } 
+                    }
                     return Left(List(SemanticError("BinOp differnt types: " + t1 + " and " + t2)))
                 }
             case (Left(a), Left(b)) => Left(a ++ b)
             case _ => Left(List(SemanticError("UNDEFINED")))
             }
+        }
 
     // private def checkComparisonOp(x: Expr, y: Expr, scopeLevel: String) : Either[List[SemanticError], Type] = {
     //     (findType(x, scopeLevel), findType(y, scopeLevel)) match {
