@@ -13,37 +13,47 @@ object Semantic {
 
     def getValueFromTable(key: String): Either[List[SemanticError], Type] = {
         var scopeVar = key
-        while (scopeVar.contains("-")) {
-            symbolTable.get(scopeVar) match {
-                case Some(value) => {
-                    println("Found " + value + " with table name " + scopeVar)
-                    return Right(value)
+        symbolTable.get(scopeVar) match {
+            case Some(value) => Right(value)
+            case None =>
+                while (scopeVar.contains("-")) {
+                    symbolTable.get(scopeVar) match {
+                        case Some(value) => {
+                            return Right(value)
+                        }
+                        case None => 
+                            scopeVar = scopeVar.substring(0, scopeVar.lastIndexOf("-"))
+                    }
                 }
-                case None => scopeVar = scopeVar.substring(0, scopeVar.lastIndexOf("-"))
-            }
+                symbolTable.get(scopeVar) match {
+                    case None => Left(List(SemanticError(s"unexpected identifier $key")))
+                    case Some(value) => Right(value)
+                }
+                
         }
-        Left(List(SemanticError(s"unexpected identifier $key")))
     }
 
 
     def stmtCheck(prog: Stmt, scopeLevel: String) :
-        Either[List[SemanticError], Unit] = { 
+        Either[List[SemanticError], Unit] = {
             println("----------------------------")
             println("Checking statement:\n" + prog)
         prog match {
             case Declare(t, ident, rvalue) =>
-                var scopeVarible = s"${ident.x}-$scopeLevel"
+                var scopeVarible = s"${ident.x}$scopeLevel"
 
                 symbolTable.get(scopeVarible) match {
                     case Some(_) => Left(List(SemanticError(s"Variable $ident already declared.")))
 
                     case None =>
                         checkRvalue(rvalue, scopeLevel) match {
-                            case Right(value) if value == t =>
-                                symbolTable += (scopeVarible -> t)
+                            case Right(value) if typeMatch(t, value) =>
+
+                                symbolTable.addOne(scopeVarible -> t)
                                 Right(())
 
-                            case Right(badType) => Left(List(SemanticError("Type mismatch\nExpected: " + t + " Actual: " + badType)))
+                            case Right(badType) => 
+                                Left(List(SemanticError("Type mismatch\nExpected: " + t + " Actual: " + badType)))
 
                             case Left(value) => Left(value)
                         }
@@ -96,7 +106,7 @@ object Semantic {
                         Left(error)
 
                     case Right(t) if t != BoolType =>
-                        Left((List(SemanticError("Type mismatch 33"))))
+                        Left((List(SemanticError("Type mismatch\nExpected: Boolean Actual: " + t))))
 
                     case Right(_) =>
                         stmtCheck(s, scopeLevel + "-w")
@@ -173,7 +183,7 @@ object Semantic {
                     pairElemType2 = toPairElemType(type2) // Convert to PairElemType if necessary
                 } yield PairType(pairElemType1, pairElemType2)
 
-            case Call(ident, x) => getValueFromTable(ident.x + "-" + scopeLevel)
+            case Call(ident, x) => getValueFromTable(ident.x + scopeLevel)
             case Fst(lvalue) => checkLvalue(lvalue, scopeLevel)
             case Snd(lvalue) => checkLvalue(lvalue, scopeLevel)
             case e => findType(e.asInstanceOf[Expr], scopeLevel)
@@ -213,6 +223,8 @@ object Semantic {
 
 
     def semanticAnalysis(prog: Stmt) : Either[List[SemanticError], Unit] = {
+        symbolTable.clear()
+
         prog match {
             case Program(funcs, body) =>
                 (checkFuncsList(funcs), stmtCheck(body, "")) match {
@@ -231,9 +243,11 @@ object TypeCheck {
                             expectedOutputType: Type, scopeLevel: String) :
                                 Either[List[SemanticError], Type] = {
         (findType(x, scopeLevel), findType(y, scopeLevel)) match {
-            case (Right(t1), Right(t2)) if expectedType(t1) && expectedType(t2) =>
-                Right(expectedOutputType)
-            case ((Right(t1), Right(t2)) ) => Left(List(SemanticError(s"Type mismatch for binary operation $t1 and $t2")))
+            case (Right(t1), Right(t2)) => (t1, t2) match {
+                case (ArrayType(a), ArrayType(b)) if expectedType(ArrayType(AnyType)) && typeMatch(a, b) => Right(expectedOutputType)
+                case _ if expectedType(t1) && expectedType(t2) => Right(expectedOutputType)
+                case _ => Left(List(SemanticError(s"Type mismatch for binary operation $t1 and $t2")))
+            }
             case _ => Left(List(SemanticError("Type mismatch for binary operation")))
         }
     }
@@ -255,23 +269,24 @@ object TypeCheck {
 
     def checkArrayList(arrayList: List[Expr], scopeLevel: String): Either[List[SemanticError], Type] = {
         arrayList match {
-            case Nil => Left(List(SemanticError("Array cannot be empty")))
-            case (head :: tail) =>  
-                findType(head, scopeLevel) match {
-                    case Right(value) => {
-                        for(elem <- tail) {
-                            findType(elem, scopeLevel) match {
-                                case Right(value1) => if (value1 != value) 
-                                    return Left(List(SemanticError("Array elements must be of the same type.")))
-                                case Left(value1) => Left(value)
-                            }
+            case Nil => Right(AnyType) // Empty arrays default to AnyType
+            case head :: tail =>
+                val headTypeResult = findType(head, scopeLevel)
+                headTypeResult.flatMap { headType =>
+                    // Check each element in the tail has the same type as the head
+                    val allMatch = tail.forall { expr =>
+                        findType(expr, scopeLevel) match {
+                            case Right(t) => typeMatch(t, headType)
+                            case _ => false
                         }
-                        return Right(ArrayType(value))
                     }
-                    case Left(value) => Left(value)
+                    // If all match, return ArrayType of the head's type, else return an error
+                    if (allMatch) Right(ArrayType(headType))
+                    else Left(List(SemanticError("Array elements must be of the same type.")))
                 }
         }
     }
+
 
     val everyType: Set[Type] = Set(PairType(AnyType, AnyType), ArrayType(AnyType), IntType, BoolType, CharType, StringType)
     // val everyArrayType: Set[Type] = Set()
@@ -300,9 +315,9 @@ object TypeCheck {
             case BoolLit(x) => Right(BoolType)
             case CharLit(x) => Right(CharType)
             case StrLit(x) => Right(StringType)
-            case Ident(x) => getValueFromTable(x + "-" + scopeLevel)
+            case Ident(x) => getValueFromTable(x + scopeLevel)
             case ArrayElem(ident, exprList) =>
-                getValueFromTable(ident.x + "-" + scopeLevel).flatMap {
+                getValueFromTable(ident.x + scopeLevel).flatMap {
                     case ArrayType(t) =>
                         val indexTypeChecks = exprList.map(findType(_, scopeLevel))
                         val indexErrors = indexTypeChecks.collect { case Left(errs) => errs }.flatten
@@ -337,6 +352,11 @@ object TypeCheck {
     }
 
     def typeMatch(t1: Type, t2: Type) : Boolean = {
-        t1 == AnyType || t2 == AnyType || t1 == t2
+        (t1, t2) match {
+            case (ArrayType(a), ArrayType(b)) => typeMatch(a, b)
+            case (StringType, ArrayType(CharType)) => true
+            case (ArrayType(CharType), StringType) => true
+            case _ => t1 == AnyType || t2 == AnyType || t1 == t2
+        }
     }
 }
