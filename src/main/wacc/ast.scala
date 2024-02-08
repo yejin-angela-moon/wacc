@@ -2,20 +2,22 @@ package wacc
 
 import parsley.{Parsley, Result}
 import parsley.Success
+import java.security.Identity
+import scala.collection.View.Empty
 
 object SemanticManager {
     import ast._ 
     def resolve(x: Result[List[Error], Expr], y: Result[List[Error], Expr]) : Result[List[Error], Expr] =
         (x, y) match {
-            /* BOTH lower evaluations failed */
-            case (Failure(a), Failure(b)) => Failure(a ++ b) 
+            // /* BOTH lower evaluations failed */
+            // case (Failure(a), Failure(b)) => Failure(a ++ b) 
 
-            /* ONE lower evaluations failed */
-            case (_, Failure(a)) => Failure(a)              
-            case (Failure(a), _) => Failure(a)
+            // /* ONE lower evaluations failed */
+            // case (_, Failure(a)) => Failure(a)              
+            // case (Failure(a), _) => Failure(a)
 
-            /* Different Types from Wrapper Condiion (i.e. not BoolLit or IntLit) */
-            case (Success(a), Success(a)) => ??? 
+            // /* Different Types from Wrapper Condiion (i.e. not BoolLit or IntLit) */
+            // case (Success(a), Success(a)) => ??? 
 
             /* Non-conforming types */                            
             case (Success(a), _) => ???                                     
@@ -24,8 +26,8 @@ object SemanticManager {
             //TODO (optional): extract types (using .getType() from semantic.scala) for cleaner error message                                                   
         }
     def overflow(x: BigInt, y: BigInt, op: (BigInt, BigInt) => BigInt) : Result[List[Error], Expr] = {
-        if(true /* overflow detected*/)
-            return Failure(new RuntimeException("Overflow detected"))
+        // if(true /* overflow detected*/)
+        //     return Failure(new RuntimeException("Overflow detected"))
         
         return Success(IntLit(op(x,y)))
     }
@@ -34,7 +36,8 @@ object SemanticManager {
 object ast {
     import parsley.generic._
     import SemanticManager._
-    import Semantic.getEntry
+    import Semantic.getValueFromTable
+    import ast._
 
     sealed trait Expr extends Rvalue with Lvalue {
         def eval(scope: String) : Result[List[Error], Expr]
@@ -194,7 +197,14 @@ object ast {
         def eval(scope: String): Result[List[Error],Expr] = Success(this)
     }
     case class Ident(x: String) extends Expr with Lvalue {
-        def eval(scope: String): Result[List[Error],Expr] = Semantic.getEntry(x + scope)
+        def eval(scope: String): Result[List[Error],Expr] = getValueFromTable(x + scope) match {
+            case Right(PairType(_,_)) => Success(PairLit)
+            case Right(ArrayType(_)) => Success(ArrayElem(this, List(this)))
+            case Right(IntType) => Success(IntLit(0))
+            case Right(BoolType) => Success(BoolLit(true))
+            case Right(CharType) => Success(CharLit('n'))
+            case Right(StringType) => Success(StrLit(" "))
+        }
     }
     case class ArrayElem(ident: Ident, x: List[Expr]) extends Expr with Lvalue {
         def eval(scope: String): Result[List[Error],Expr] = Success(this)
@@ -210,7 +220,7 @@ object ast {
     case class Program(funcs: List[Func], body: Stmt) extends Stmt
 
     /* Function */
-    case class Func(t: Type, ident: Ident, list: ParamList, body: Stmt)
+    case class Func(t: Type, ident: Ident, list: ParamList, body: Stmt) extends Stmt
 
     /* Parameter List */
     case class ParamList(params: List[Param])
@@ -254,8 +264,6 @@ object ast {
     /* Type */
     sealed trait Type
 
-    case object AnyType extends Type with PairElemType
-
     /* Pair Type */
     case class PairType(p1: PairElemType, p2: PairElemType) extends Type
 
@@ -271,6 +279,9 @@ object ast {
     case object BoolType extends BaseType with ParserBridge0[BaseType]
     case object CharType extends BaseType with ParserBridge0[BaseType]
     case object StringType extends BaseType with ParserBridge0[BaseType]
+
+    /* Any-Type */
+    case object AnyType extends Type with BaseType with PairElemType 
 
     object Div extends ParserBridge2[Expr, Expr, Expr]
     object Mod extends ParserBridge2[Expr, Expr, Expr]

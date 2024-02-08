@@ -24,7 +24,7 @@ class InvalidSemantic extends AnyFunSuite {
 
         test ("Testing: "  + validFile.getPath().substring("invalid/semanticErr/".length())){
           assert(validFile.isFile())
-          assert(getOutput(validFile) == "failure")
+          assert(testSemantics(validFile) == "failure")
         }
       } else {
         // Sub-directories
@@ -32,11 +32,26 @@ class InvalidSemantic extends AnyFunSuite {
         for(subValidFile <- validFile.listFiles())
           test ("Testing: "  + subValidFile.getPath().substring("invalid/semanticErr/".length())) {
             assert(subValidFile.isFile())
-            assert(getOutput(subValidFile) == "failure")
+            assert(testSemantics(subValidFile) == "failure")
           }
       }
     }
 
+  }
+
+  def testSemantics(f: File) : String = {
+    parser.parse(f.getPath()) match {
+      case Success(prog) => Semantic.semanticAnalysis(prog) match {
+        case Right(_) => "success"
+        case Left(value) => {
+          for(SemanticError(msg) <- value) 
+            println(msg)
+          return "failure"
+        }
+      }
+      case Failure(msg) => "PARSER FAIL" 
+
+    }
   }
 
 }

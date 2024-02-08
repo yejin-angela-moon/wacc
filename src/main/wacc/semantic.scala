@@ -3,8 +3,8 @@ package wacc
 import scala.collection.mutable.{HashMap}
 import parsley.{Result, Success, Failure}
 import ast._
-import java.lang.foreign.MemorySegment.Scope
-import Error.SemanticError
+// import java.lang.foreign.MemorySegment.Scope
+import SemanticError._
 import Semantic._
 import TypeCheck._
 
@@ -207,7 +207,7 @@ object Semantic {
     }
 
 
-    def semanticAnalysis(prog: Program) : Either[List[SemanticError], Unit] = {
+    def semanticAnalysis(prog: Stmt) : Either[List[SemanticError], Unit] = {
         prog match {
             case Program(funcs, body) =>
                 (checkFuncsList(funcs), stmtCheck(body, "")) match {
