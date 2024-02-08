@@ -283,6 +283,19 @@ object ast {
     /* Any-Type */
     case object AnyType extends Type with PairElemType
 
+    implicit class TypeBinOp(t: Type) {
+        def :>(that: Type) : Boolean = (t, that) match {
+            case (AnyType, _) => true 
+            case (ArrayType(CharType), StringType) => true 
+            case (PairElemType1, PairType(_, _)) => true
+            case (PairElemType2(a), PairElemType2(b)) => a:>b
+            case (ArrayType(a), ArrayType(b)) => a:>b
+            case (PairType(p1, p2),PairType(t1, t2)) => p1:>t1 && p2:>t2
+            case (a, b) => a == b 
+        }
+        
+    }
+
     object Div extends ParserBridge2[Expr, Expr, Expr]
     object Mod extends ParserBridge2[Expr, Expr, Expr]
     object Add extends ParserBridge2[Expr, Expr, Expr]

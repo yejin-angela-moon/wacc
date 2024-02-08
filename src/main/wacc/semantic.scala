@@ -47,13 +47,15 @@ object Semantic {
 
                     case None =>
                         checkRvalue(rvalue, scopeLevel) match {
-                            case Right(value) if typeMatch(t, value) =>
+                            case Right(value) => {
+                                if(t :> value)
+                                    return Right(())
 
-                                symbolTable.addOne(scopeVarible -> t)
-                                Right(())
-
-                            case Right(badType) => 
-                                Left(List(SemanticError("Type mismatch\nExpected: " + t + " Actual: " + badType)))
+                                if (value :> t)
+                                    return Left(List(SemanticError(s"Tried assigning stronger $value value to weaker $t")))
+                                
+                                return Left(List(SemanticError(s"Declare type mismatch\nExpected: $t Actual: $value")))
+                            }
 
                             case Left(value) => Left(value)
                         }
@@ -254,16 +256,20 @@ object TypeCheck {
     
     private def checkBinaryOp(x: Expr, y: Expr, expectedType: Set[Type],
                             expectedOutputType: Type, scopeLevel: String) :
-                                Either[List[SemanticError], Type] = {
+                                Either[List[SemanticError], Type] = 
         (findType(x, scopeLevel), findType(y, scopeLevel)) match {
-            case (Right(t1), Right(t2)) => (t1, t2) match {
-                case (ArrayType(a), ArrayType(b)) if expectedType(ArrayType(AnyType)) && typeMatch(a, b) => Right(expectedOutputType)
-                case _ if expectedType(t1) && expectedType(t2) => Right(expectedOutputType)
-                case _ => Left(List(SemanticError("Type mismatch\nExpected: " + expectedType + " Actual: " + t1)))
+            case (Right(t1), Right(t2)) => {
+                    if(t1 :> t2 && t2 :> t1) {
+                        if(expectedType.filter((x) => x :> t1).size >= 1)
+                            return Right(t1)
+                        
+                        return Left(List(SemanticError("BinOp type mismatch\nExpected: " + expectedType + " Actual: " + t1)))
+                    } 
+                    return Left(List(SemanticError("BinOp differnt types: " + t1 + " and " + t2)))
+                }
+            case (Left(a), Left(b)) => Left(a ++ b)
+            case _ => Left(List(SemanticError("UNDEFINED")))
             }
-            case _ => Left(List(SemanticError("Type mismatch for binary operation")))
-        }
-                                }
 
     // private def checkComparisonOp(x: Expr, y: Expr, scopeLevel: String) : Either[List[SemanticError], Type] = {
     //     (findType(x, scopeLevel), findType(y, scopeLevel)) match {
