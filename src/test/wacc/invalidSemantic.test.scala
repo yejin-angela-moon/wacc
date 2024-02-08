@@ -8,6 +8,7 @@ import scala.util._
 import GetOutput._
 
 class InvalidSemantic extends AnyFunSuite {
+  import TestSemantics.testSemantics
   val validDir = new File("invalid/semanticErr/")
 
   assert(validDir.isDirectory)
@@ -38,7 +39,9 @@ class InvalidSemantic extends AnyFunSuite {
     }
 
   }
+}
 
+object TestSemantics {
   def testSemantics(f: File) : String = {
     parser.parse(f.getPath()) match {
       case Success(prog) => Semantic.semanticAnalysis(prog) match {
@@ -53,5 +56,4 @@ class InvalidSemantic extends AnyFunSuite {
 
     }
   }
-
 }
