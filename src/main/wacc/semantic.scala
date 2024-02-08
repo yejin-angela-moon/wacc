@@ -239,7 +239,7 @@ object Semantic {
 
         prog match {
             case Program(funcs, body) =>
-                (checkFuncsList(funcs), stmtCheck(body, "")) match {
+                (checkFuncsList(funcs), stmtCheck(body, "-g")) match {
                     case (Right(_), Right(_)) => Right(())
                     case (Left(err1), Left(err2)) => Left(err1 ++ err2)
                     case (Left(errs), _) => Left(errs)
