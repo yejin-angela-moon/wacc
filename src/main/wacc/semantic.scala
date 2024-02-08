@@ -9,13 +9,17 @@ import Semantic._
 import TypeCheck._
 
 object Semantic {
+
     var symbolTable = new HashMap[String, Type]
+    var functionTable = new HashMap[String, FuncInfo]
+
+    case class FuncInfo(t: Type, params: ParamList)
 
     def getValueFromTable(key: String): Either[List[SemanticError], Type] = {
         @annotation.tailrec
         def search(scopeVar: String): Either[List[SemanticError], Type] = {
-            println(symbolTable)
-            println("adfd - " + scopeVar)
+            // println(symbolTable)
+            // println("adfd - " + scopeVar)
             symbolTable.get(scopeVar) match {
             case Some(value) => Right(value)
             case None =>
@@ -28,7 +32,54 @@ object Semantic {
             }
         }
 
+
         search(key)
+    }
+
+    def getValueFromFuncTable(key: String, args: Option[ArgList]) : Either[List[SemanticError], Type] = {
+        def search(key: String): Either[List[SemanticError], Type] = {
+            functionTable.get(key) match {
+                case Some(FuncInfo(t, ParamList(params))) => 
+                    compareParamsArgs(params, args) match {
+                        case Left(errors) => Left(errors)
+                        case Right(_) => Right(t)
+                    }
+                case None => Left(List(SemanticError("Call to undefined function")))
+            }
+        }
+        // val getFunctionName = key.split("-")
+        // (getFunctionName.lengthCompare(1) < 0) match {
+        //     case true => Left(List(SemanticError("return from main is not allowed")))
+        //     case false => symbolTable.get(getFunctionName(1)) match {
+        //         case Some(returnType) => search(getFunctionName(1))
+        //         case None => Left(List(SemanticError("return outside of function is not allowed")))
+        //     }
+        // }
+        search(key)
+    }
+
+    def compareParamsArgs(params: List[Param], maybeArgs: Option[ArgList]) : Either[List[SemanticError], Unit] = {
+        def compareLengthAndType(params: List[Param], args: List[Expr]) : Either[List[SemanticError], Unit] = {
+            if (params.length != args.length) {
+                return Left(List(SemanticError("parameter number mismatch")))
+            }
+            println(s"Comparing $params and $args")
+            params.zip(args).find { 
+                case (param, arg) => 
+                    val Right(argType) = findType(arg, "-g")
+                    println(s"comparing ${param.t} and $argType")
+                    param.t != argType
+            } match {
+                case Some(res) => 
+                    println(res)
+                    Left(List(SemanticError("parameter type mismatch")))
+                case None => Right(()) 
+            }
+        }
+        maybeArgs match {
+            case Some(ArgList(args)) => compareLengthAndType(params, args)
+            case None if params.isEmpty => Right(())
+        }
     }
 
 
@@ -38,9 +89,9 @@ object Semantic {
             // println("Checking statement:\n" + prog)
         prog match {
             case Declare(t, ident, rvalue) =>
-                var scopeVarible = s"${ident.x}$scopeLevel"
+                var scopeVar = s"${ident.x}$scopeLevel"
 
-                symbolTable.get(scopeVarible) match {
+                symbolTable.get(scopeVar) match {
                     case Some(_) => 
                         Left(List(SemanticError(s"Variable ${ident.x} already declared.")))
 
@@ -48,14 +99,16 @@ object Semantic {
                         checkRvalue(rvalue, scopeLevel) match {
                             case Right(value) => {
                                 if(t :> value){
-                                    symbolTable.addOne(scopeVarible -> t)
-                                    println("the hashtable = " + symbolTable)
+                                    symbolTable.addOne(scopeVar -> t)
+                                    // println("the hashtable = " + symbolTable)
                                     println(ident.x)
                                     Right(())}
                                 else if (value :> t)
-                                    Left(List(SemanticError(s"Tried assigning stronger $value value to weaker $t")))
+                                    // Left(List(SemanticError(s"Tried assigning stronger $value value to weaker $t")))
+                                    Left(List(SemanticError("Tried assigning stronger to weaker")))
                                 else
-                                    Left(List(SemanticError(s"Declare type mismatch\nExpected: $t Actual: $value")))
+                                    // Left(List(SemanticError(s"Declare type mismatch\nExpected: $t Actual: $value")))
+                                    Left(List(SemanticError("Declare type mismatch")))
                             }
 
 
@@ -190,7 +243,7 @@ object Semantic {
                     pairElemType2 = toPairElemType(type2) // Convert to PairElemType if necessary
                 } yield PairType(pairElemType1, pairElemType2)
 
-            case Call(ident, x) => getValueFromTable(ident.x + scopeLevel)
+            case Call(ident, list) => getValueFromFuncTable(ident.x, list)
             case Fst(lvalue) => checkLvalue(lvalue, scopeLevel) match {
                 case Right(PairType(a, b)) => Right(fromPairElemType(a))
                 case _ => Left(List(SemanticError("Can only use fst on pair type"))) 
@@ -215,34 +268,52 @@ object Semantic {
     }
 
     def checkFuncsList(funcs: List[Func]): Either[List[SemanticError], Unit] = {
-        funcs.foreach(f =>
-            symbolTable.get(f.ident.x) match {
-                case Some(value) => Left(List(SemanticError(s"Function redefinition error: illegal redefinition of function ${f.ident.x}")))
-                case None => symbolTable.addOne(f.ident.x -> f.t)
-            }
-        )
 
-        funcs.foldLeft[Either[List[SemanticError], Unit]](Right(())) { (acc, func) =>
-            acc.flatMap { _ =>
-
-                func.list.params.foreach {
-                    param =>
-                        val paramNameWithScope = s"${param.ident.x}-${func.ident.x}"
-                        println(paramNameWithScope)
-                        symbolTable.addOne(paramNameWithScope -> param.t)
-                }
-
-                stmtCheck(func.body, "-" + func.ident.x + "-b")
-            }
+        val errors = funcs.flatMap { f =>
+        functionTable.get(f.ident.x) match {
+            case Some(_) => 
+                List(SemanticError(s"Function redefinition error of function ${f.ident.x}"))
+            case None => 
+                println(s"Adding function ${f.ident.x} to the function table")
+                functionTable.addOne(f.ident.x -> FuncInfo(f.t, f.list))
+                None
         }
     }
+        if (errors.isEmpty) Right(())
+        else (Left(errors))
+    }
+
+        // funcs.foreach(f =>
+        //     functionTable.get(f.ident.x) match {
+        //         case Some(_) => 
+        //             Left(List(SemanticError(s"Function redefinition error: illegal redefinition of function ${f.ident.x}")))
+        //         case None =>                 
+        //             functionTable.addOne(f.ident.x -> FuncInfo(f.t, f.list))
+        //             println(s"function ${f.ident.x} added")
+        //             Right(())
+        //     }
+        // )
+
+        // funcs.foldLeft[Either[List[SemanticError], Unit]](Right(())) { (acc, func) =>
+        //     acc.flatMap { _ =>
+
+        //         func.list.params.foreach {
+        //             param =>
+        //                 val paramNameWithScope = s"${func.ident.x}-${param.ident.x}"
+        //                 println(paramNameWithScope)
+        //                 symbolTable.addOne(paramNameWithScope -> param.t)
+        //         }
+
+        //         stmtCheck(func.body, "-" + func.ident.x + "-g")
+        //     }
+        // }
 
     def getCurrentFunctionReturnType(scopeLevel: String): Either[List[SemanticError], Type] = {
         val getFunctionName = scopeLevel.split("-")
         (getFunctionName.lengthCompare(1) < 0) match {
             case true => Left(List(SemanticError("return from main is not allowed")))
-            case false => symbolTable.get(getFunctionName(1)) match {
-                case Some(returnType) => Right(returnType)
+            case false => functionTable.get(getFunctionName(1)) match {
+                case Some(FuncInfo(t, params)) => Right(t)
                 case None => Left(List(SemanticError("return outside of function is not allowed")))
             }
         }
@@ -252,6 +323,7 @@ object Semantic {
 
     def semanticAnalysis(prog: Stmt) : Either[List[SemanticError], Unit] = {
         symbolTable.clear()
+        functionTable.clear()
 
         prog match {
             case Program(funcs, body) =>
@@ -385,7 +457,6 @@ object TypeCheck {
                     }
                 case _ => Left(List(SemanticError(s"${ident.x} is not an array type")))
                 }
-            case Paran(x) => findType(x, scopeLevel)
             case PairLit => Right(PairType(AnyType, AnyType))
         }
     }
