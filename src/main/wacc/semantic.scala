@@ -30,7 +30,6 @@ object Semantic {
         Either[List[SemanticError], Unit] = { 
             println("----------------------------")
             println("Checking statement:\n" + prog)
-            
         prog match {
             case Declare(t, ident, rvalue) =>
                 var scopeVarible = s"${ident.x}-$scopeLevel"
@@ -234,6 +233,7 @@ object TypeCheck {
         (findType(x, scopeLevel), findType(y, scopeLevel)) match {
             case (Right(t1), Right(t2)) if expectedType(t1) && expectedType(t2) =>
                 Right(expectedOutputType)
+            case ((Right(t1), Right(t2)) ) => Left(List(SemanticError(s"Type mismatch for binary operation $t1 and $t2")))
             case _ => Left(List(SemanticError("Type mismatch for binary operation")))
         }
     }
@@ -282,6 +282,8 @@ object TypeCheck {
         }
     }
 
+    val everyType: Set[Type] = Set(PairType(AnyType, AnyType), ArrayType(AnyType), IntType, BoolType, CharType, StringType)
+
     def findType(expr : Expr, scopeLevel : String) : Either[List[SemanticError], Type] = {
         expr match {
             case Add(x, y) => checkBinaryOp(x, y, Set(IntType), IntType, scopeLevel)
@@ -295,8 +297,8 @@ object TypeCheck {
             case LTE(x, y) => checkBinaryOp(x, y, Set(IntType), BoolType, scopeLevel)
             case GT(x, y) => checkBinaryOp(x, y, Set(IntType), BoolType, scopeLevel)
             case GTE(x, y) => checkBinaryOp(x, y, Set(IntType), BoolType, scopeLevel)
-            case E(x, y) => checkBinaryOp(x, y, Set(IntType), BoolType, scopeLevel)
-            case NE(x, y) => checkBinaryOp(x, y, Set(IntType), BoolType, scopeLevel)
+            case E(x, y) => checkBinaryOp(x, y, everyType, BoolType, scopeLevel)
+            case NE(x, y) => checkBinaryOp(x, y, everyType, BoolType, scopeLevel)
             case Not(x) => checkUnaryOp(x, Set(BoolType), BoolType, scopeLevel)
             case Neg(x) => checkUnaryOp(x, Set(IntType), IntType, scopeLevel)
             case Len(x) => checkUnaryOp(x, Set(ArrayType(AnyType), StringType), IntType, scopeLevel)
