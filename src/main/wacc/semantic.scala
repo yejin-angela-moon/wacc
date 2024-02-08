@@ -36,8 +36,8 @@ object Semantic {
 
     def stmtCheck(prog: Stmt, scopeLevel: String) :
         Either[List[SemanticError], Unit] = {
-            println("----------------------------")
-            println("Checking statement:\n" + prog)
+            // println("----------------------------")
+            // println("Checking statement:\n" + prog)
         prog match {
             case Declare(t, ident, rvalue) =>
                 var scopeVarible = s"${ident.x}$scopeLevel"
@@ -184,15 +184,27 @@ object Semantic {
                 } yield PairType(pairElemType1, pairElemType2)
 
             case Call(ident, x) => getValueFromTable(ident.x + scopeLevel)
-            case Fst(lvalue) => checkLvalue(lvalue, scopeLevel)
-            case Snd(lvalue) => checkLvalue(lvalue, scopeLevel)
+            case Fst(lvalue) => checkLvalue(lvalue, scopeLevel) match {
+                case Right(PairType(a, b)) => Right(fromPairElemType(a))
+                case _ => Left(List(SemanticError("Can only use fst on pair type"))) 
+            }
+            case Snd(lvalue) => checkLvalue(lvalue, scopeLevel) match {
+                case Right(PairType(a, b)) => Right(fromPairElemType(b))
+                case _ => Left(List(SemanticError("Can only use snd on pair type"))) 
+            }
             case e => findType(e.asInstanceOf[Expr], scopeLevel)
         }
     }
 
     def toPairElemType(t: Type): PairElemType = t match {
-        case pt: PairElemType => pt 
+        case PairElemType1 => PairElemType1
         case _ => PairElemType2(t)
+    }
+
+    def fromPairElemType(t: PairElemType) : Type = t match {
+        case PairElemType2(a) => a 
+        case PairElemType1    => PairElemType1
+
     }
 
     def checkFuncsList(funcs: List[Func]): Either[List[SemanticError], Unit] = {

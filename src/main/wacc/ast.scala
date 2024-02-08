@@ -268,7 +268,7 @@ object ast {
     case class PairType(p1: PairElemType, p2: PairElemType) extends Type
 
     /* Pair Elem Type */
-    sealed trait PairElemType
+    sealed trait PairElemType extends Type
     case object PairElemType1 extends PairElemType with ParserBridge0[PairElemType]
     case class  PairElemType2(t: Type) extends PairElemType
     case class ArrayType(t: Type) extends Type with PairElemType
