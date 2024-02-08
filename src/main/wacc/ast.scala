@@ -20,7 +20,7 @@ object SemanticManager {
             // case (Success(a), Success(a)) => ??? 
 
             /* Non-conforming types */                            
-            case (Success(a), _) => ???                                     
+            case (Success(a), _) => ???                        
             case (_, Success(a)) => ???
 
             //TODO (optional): extract types (using .getType() from semantic.scala) for cleaner error message                                                   
@@ -28,7 +28,9 @@ object SemanticManager {
     def overflow(x: BigInt, y: BigInt, op: (BigInt, BigInt) => BigInt) : Result[List[Error], Expr] = {
         // if(true /* overflow detected*/)
         //     return Failure(new RuntimeException("Overflow detected"))
-        
+        if ((x > (2^31 - 1)) || (x < (-2^31)) || (y >( 2^31-1)) || (y < (-2^31))) {
+            System.exit(255)
+        }
         return Success(IntLit(op(x,y)))
     }
 }

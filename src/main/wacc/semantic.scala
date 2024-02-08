@@ -25,15 +25,15 @@ object Semantic {
         Left(List(SemanticError(s"unexpected identifier $key")))
     }
 
-
+    /* ScopeLevel: starting with "-", newly entered at every begin-end ("-b"), function ("-f"), while ("-w") and if/else ("-i", "-e")*/
     def stmtCheck(prog: Stmt, scopeLevel: String) :
         Either[List[SemanticError], Unit] = { 
-            println("----------------------------")
-            println("Checking statement:\n" + prog)
+            // println("----------------------------")
+            // println("Checking statement:\n" + prog)
             
         prog match {
             case Declare(t, ident, rvalue) =>
-                var scopeVarible = s"${ident.x}-$scopeLevel"
+                var scopeVarible = s"${ident.x}$scopeLevel"
 
                 symbolTable.get(scopeVarible) match {
                     case Some(_) => Left(List(SemanticError(s"Variable $ident already declared.")))
@@ -153,6 +153,7 @@ object Semantic {
         l match {
             case Ident(x) =>
                 findType(Ident(x), scopeLevel)
+
             case ArrayElem(ident, exprList) =>
                 findType(ArrayElem(ident, exprList), scopeLevel)
             case Fst(lvalue) => checkLvalue(lvalue, scopeLevel)
