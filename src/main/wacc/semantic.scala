@@ -11,18 +11,21 @@ import TypeCheck._
 object Semantic {
     var symbolTable = new HashMap[String, Type]
 
+
     def getValueFromTable(key: String): Either[List[SemanticError], Type] = {
         var scopeVar = key
+
         while (scopeVar.contains("-")) {
             symbolTable.get(scopeVar) match {
-                case Some(value) => {
-                    println("Found " + value + " with table name " + scopeVar)
-                    return Right(value)
+                case Some(typeValue) => {
+                    println("Found " + typeValue + " with table name " + scopeVar)
+                    return Right(typeValue)
                 }
                 case None => scopeVar = scopeVar.substring(0, scopeVar.lastIndexOf("-"))
             }
         }
-        Left(List(SemanticError(s"unexpected identifier $key")))
+
+        Left(List(SemanticError(s"access attempt on undeclared variable $scopeVar")))
     }
 
     /* ScopeLevel: starting with "-", newly entered at every begin-end ("-b"), function ("-f"), while ("-w") and if/else ("-i", "-e")*/
@@ -30,18 +33,20 @@ object Semantic {
         Either[List[SemanticError], Unit] = { 
             // println("----------------------------")
             // println("Checking statement:\n" + prog)
+        /* scopeLevel = "" initially */
             
         prog match {
             case Declare(t, ident, rvalue) =>
-                var scopeVarible = s"${ident.x}$scopeLevel"
+                var scopeVar = s"${ident.x}$scopeLevel"
 
-                symbolTable.get(scopeVarible) match {
-                    case Some(_) => Left(List(SemanticError(s"Variable $ident already declared.")))
+                symbolTable.get(scopeVar) match {
+                    case Some(_) => Left(List(SemanticError(s"Variable ${ident.x} already declared.")))
 
                     case None =>
                         checkRvalue(rvalue, scopeLevel) match {
-                            case Right(value) if value == t =>
-                                symbolTable += (scopeVarible -> t)
+                            case Right(value) if (value == t) =>
+                                println(s"Storing variable $scopeVar at level $scopeLevel in the symbol table")
+                                symbolTable += (scopeVar -> t)
                                 Right(())
 
                             case Right(badType) => Left(List(SemanticError("Type mismatch\nExpected: " + t + " Actual: " + badType)))
@@ -57,13 +62,13 @@ object Semantic {
                 (lResult, rResult) match {
                     case (Right(t1), Right(t2)) =>
                     if (t1 == t2) Right(())
-                    else Left(List(SemanticError("Type mismatch 22 ")))
+                    else Left(List(SemanticError(s"Type mismatch: $t1 and $t2")))
 
                     case (Left(errors1), Left(errors2)) =>
-                    Left(errors1 ++ errors2)
+                    Left(List(SemanticError("Assignment to undeclared variable")) ++ errors2)
 
                     case (Left(errors), Right(_)) =>
-                    Left(errors)
+                    Left(List(SemanticError("Assignment to undeclared variable")))
 
                     case (Right(_), Left(errors)) =>
                     Left(errors)
@@ -143,19 +148,18 @@ object Semantic {
                 case Left(errors) => Left(errors)
             }
             case Free(x) => findType(x, scopeLevel) match {
-                case Right(_) => Right(())
+                case Right(ArrayType(_)) => Right(())
+                case Right(PairType(_,_)) => Right(())
                 case Left(errors) => Left(errors)
+                case Right(_) => Left(List(SemanticError("Attempt to free non-dynamically allocated memory")))
             }
         }
     }
 
     def checkLvalue(l: Lvalue, scopeLevel: String): Either[List[SemanticError], Type] = {
         l match {
-            case Ident(x) =>
-                findType(Ident(x), scopeLevel)
-
-            case ArrayElem(ident, exprList) =>
-                findType(ArrayElem(ident, exprList), scopeLevel)
+            case Ident(x) => findType(Ident(x), scopeLevel)
+            case ArrayElem(ident, exprList) => findType(ArrayElem(ident, exprList), scopeLevel)
             case Fst(lvalue) => checkLvalue(lvalue, scopeLevel)
             case Snd(lvalue) => checkLvalue(lvalue, scopeLevel)
             }
@@ -215,9 +219,10 @@ object Semantic {
 
 
     def semanticAnalysis(prog: Stmt) : Either[List[SemanticError], Unit] = {
+        symbolTable.clear()
         prog match {
             case Program(funcs, body) =>
-                (checkFuncsList(funcs), stmtCheck(body, "")) match {
+                (checkFuncsList(funcs), stmtCheck(body, "-g")) match {
                     case (Right(_), Right(_)) => Right(())
                     case (Left(err1), Left(err2)) => Left(err1 ++ err2)
                     case (Left(errs), _) => Left(errs)
@@ -233,8 +238,9 @@ object TypeCheck {
                             expectedOutputType: Type, scopeLevel: String) :
                                 Either[List[SemanticError], Type] = {
         (findType(x, scopeLevel), findType(y, scopeLevel)) match {
-            case (Right(t1), Right(t2)) if expectedType(t1) && expectedType(t2) =>
-                Right(expectedOutputType)
+            case (Right(t1), Right(t2)) if expectedType(t1) && expectedType(t2) => Right(expectedOutputType)
+            case (Left(errors), _) => Left(errors)
+            case (_, Left(errors)) => Left(errors)
             case _ => Left(List(SemanticError("Type mismatch for binary operation")))
         }
     }
@@ -284,6 +290,7 @@ object TypeCheck {
     }
 
     def findType(expr : Expr, scopeLevel : String) : Either[List[SemanticError], Type] = {
+        // val key = scopeLevel.substring(1)
         expr match {
             case Add(x, y) => checkBinaryOp(x, y, Set(IntType), IntType, scopeLevel)
             case Sub(x, y) => checkBinaryOp(x, y, Set(IntType), IntType, scopeLevel)
@@ -307,9 +314,9 @@ object TypeCheck {
             case BoolLit(x) => Right(BoolType)
             case CharLit(x) => Right(CharType)
             case StrLit(x) => Right(StringType)
-            case Ident(x) => getValueFromTable(x + "-" + scopeLevel)
+            case Ident(x) => getValueFromTable(s"$x$scopeLevel")
             case ArrayElem(ident, exprList) =>
-                getValueFromTable(ident.x + "-" + scopeLevel).flatMap {
+                getValueFromTable(s"${ident.x}$scopeLevel").flatMap {
                     case ArrayType(t) =>
                         val indexTypeChecks = exprList.map(findType(_, scopeLevel))
                         val indexErrors = indexTypeChecks.collect { case Left(errs) => errs }.flatten
@@ -331,7 +338,6 @@ object TypeCheck {
                     }
                 case _ => Left(List(SemanticError(s"${ident.x} is not an array type")))
                 }
-            case Paran(x) => findType(x, scopeLevel)
             case PairLit => Right(PairType(AnyType, AnyType))
         }
     }
