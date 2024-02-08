@@ -15,7 +15,10 @@ object Semantic {
         var scopeVar = key
         while (scopeVar.contains("-")) {
             symbolTable.get(scopeVar) match {
-                case Some(value) => return Right(value)
+                case Some(value) => {
+                    println("Found " + value + " with table name " + scopeVar)
+                    return Right(value)
+                }
                 case None => scopeVar = scopeVar.substring(0, scopeVar.lastIndexOf("-"))
             }
         }
@@ -24,8 +27,11 @@ object Semantic {
 
 
     def stmtCheck(prog: Stmt, scopeLevel: String) :
-        Either[List[SemanticError], Unit] = { prog match {
-
+        Either[List[SemanticError], Unit] = { 
+            println("----------------------------")
+            println("Checking statement:\n" + prog)
+            
+        prog match {
             case Declare(t, ident, rvalue) =>
                 var scopeVarible = s"${ident.x}-$scopeLevel"
 
@@ -38,7 +44,7 @@ object Semantic {
                                 symbolTable += (scopeVarible -> t)
                                 Right(())
 
-                            case Right(_) => Left(List(SemanticError("Type mismatch")))
+                            case Right(badType) => Left(List(SemanticError("Type mismatch\nExpected: " + t + " Actual: " + badType)))
 
                             case Left(value) => Left(value)
                         }
@@ -51,7 +57,7 @@ object Semantic {
                 (lResult, rResult) match {
                     case (Right(t1), Right(t2)) =>
                     if (t1 == t2) Right(())
-                    else Left(List(SemanticError("Type mismatch")))
+                    else Left(List(SemanticError("Type mismatch 22 ")))
 
                     case (Left(errors1), Left(errors2)) =>
                     Left(errors1 ++ errors2)
@@ -91,7 +97,7 @@ object Semantic {
                         Left(error)
 
                     case Right(t) if t != BoolType =>
-                        Left((List(SemanticError("Type mismatch"))))
+                        Left((List(SemanticError("Type mismatch 33"))))
 
                     case Right(_) =>
                         stmtCheck(s, scopeLevel + "-w")
@@ -100,32 +106,28 @@ object Semantic {
             case BeginEnd(s) =>
                 stmtCheck(s, scopeLevel + "-b")
             case StmtList(s1, s2) =>
-
                 val res1 = stmtCheck(s1, scopeLevel)
                 val res2 = stmtCheck(s2, scopeLevel)
 
                 (res1, res2) match {
                     case (Right(_), Right(_)) => Right(())
+                    case (Left(errors1), Left(errors2)) => Left(errors1 ++ errors2)
                     case (Left(errors1), Right(_)) => Left(errors1)
                     case (Right(_), Left(errors2)) => Left(errors2)
-                    case (Left(errors1), Left(errors2)) => Left(errors1 ++ errors2)
                 }
 
             case Skip => Right(())
             case Read(lvalue) => checkLvalue(lvalue, scopeLevel) match {
                 case Right(t) if t == IntType || t == CharType => Right(())
                 case Right(_) => Left(List(SemanticError("Read expects an Int or Char type")))
-            }
-            case Read(lvalue) => checkLvalue(lvalue, scopeLevel) match {
-                case Right(t) if t == IntType || t == CharType => Right(())
-                case Right(_) => Left(List(SemanticError("Read expects an Int or Char type")))
+                case Left(value) => Left(value)
             }
             case Return(x) => (findType(x, scopeLevel), getCurrentFunctionReturnType(scopeLevel)) match {
                 case (Right(t1), Right(t2)) if t1 == t2 => Right(())
                 case (Right(t1), Right(t2)) => Left(List(SemanticError("Return type mismatch")))
+                case (Left(e1), Left(e2)) => Left(e1 ++ e2)
                 case (_, Left(e)) => Left(e)
                 case (Left(e), _) => Left(e)
-                case (Left(e1), Left(e2)) => Left(e1 ++ e2)
             }
             case Exit(x) => findType(x, scopeLevel) match {
                 case Right(IntType) => Right(())
@@ -137,6 +139,10 @@ object Semantic {
                 case Left(errors) => Left(errors)
             }
             case Println(x) => findType(x, scopeLevel) match {
+                case Right(_) => Right(())
+                case Left(errors) => Left(errors)
+            }
+            case Free(x) => findType(x, scopeLevel) match {
                 case Right(_) => Right(())
                 case Left(errors) => Left(errors)
             }
@@ -212,9 +218,11 @@ object Semantic {
             case Program(funcs, body) =>
                 (checkFuncsList(funcs), stmtCheck(body, "")) match {
                     case (Right(_), Right(_)) => Right(())
+                    case (Left(err1), Left(err2)) => Left(err1 ++ err2)
                     case (Left(errs), _) => Left(errs)
                     case (_, Left(errs)) => Left(errs)
                 }
+            case _ => Left(List(SemanticError("Program expected")))
         }
     }
 }
@@ -243,18 +251,34 @@ object TypeCheck {
     def checkArrayList(arrayList: List[Expr], scopeLevel: String): Either[List[SemanticError], Type] = {
         arrayList match {
             case Nil => Left(List(SemanticError("Array cannot be empty")))
-            case head :: tail =>
-            for {
-                headType <- findType(head, scopeLevel)
-                _ <- tail.forall(expr =>
-                    findType(expr, scopeLevel) match {
-                        case Right(t) => t == headType
-                        case _ => false
-                }) match {
-                    case true => Right(())
-                    case false => Left(List(SemanticError("Array elements must be of the same type.")))
+            case (head :: tail) =>  
+                findType(head, scopeLevel) match {
+                    case Right(value) => {
+                        for(elem <- tail) {
+                            findType(elem, scopeLevel) match {
+                                case Right(value1) => if (value1 != value) 
+                                    return Left(List(SemanticError("Array elements must be of the same type.")))
+                                case Left(value1) => Left(value)
+                            }
+                        }
+                        return Right(ArrayType(value))
+                    }
+                    case Left(value) => Left(value)
                 }
-            } yield headType
+                
+            
+            // for {
+            //     headType <- findType(head, scopeLevel)
+            //     _ <- tail.forall(expr =>
+            //         findType(expr, scopeLevel) match {
+            //             case Right(t) => t == headType
+            //             case _ => false
+            //     }) match {
+            //         case true => Right(ArrayType(headType))
+            //         case false => Left(List(SemanticError("Array elements must be of the same type.")))
+            //     }
+            // } yield headType
+           
         }
     }
 
