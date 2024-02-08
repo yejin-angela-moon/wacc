@@ -239,6 +239,7 @@ object Semantic {
 }
 
 object TypeCheck {
+    
     private def checkBinaryOp(x: Expr, y: Expr, expectedType: Set[Type],
                             expectedOutputType: Type, scopeLevel: String) :
                                 Either[List[SemanticError], Type] = {
@@ -246,11 +247,22 @@ object TypeCheck {
             case (Right(t1), Right(t2)) => (t1, t2) match {
                 case (ArrayType(a), ArrayType(b)) if expectedType(ArrayType(AnyType)) && typeMatch(a, b) => Right(expectedOutputType)
                 case _ if expectedType(t1) && expectedType(t2) => Right(expectedOutputType)
-                case _ => Left(List(SemanticError(s"Type mismatch for binary operation $t1 and $t2")))
+                case _ => Left(List(SemanticError("Type mismatch\nExpected: " + expectedType + " Actual: " + t1)))
             }
             case _ => Left(List(SemanticError("Type mismatch for binary operation")))
         }
-    }
+                                }
+
+    // private def checkComparisonOp(x: Expr, y: Expr, scopeLevel: String) : Either[List[SemanticError], Type] = {
+    //     (findType(x, scopeLevel), findType(y, scopeLevel)) match {
+    //         case (Right(t1), Right(t2)) => (t1, t2) match {
+    //             case (CharType, CharType) => Right(CharType)
+    //             case (IntType, IntType) => Right(IntType)
+    //             case _ => Left(List(SemanticError("Type mismatch\nExpected: Char or Int Actual: " + t1)))
+    //         }
+    //         case _ => Left(List(SemanticError("Type mismatch for binary operation")))
+    //     }
+    // }
 
     private def checkUnaryOp(x: Expr, expectedType: Set[Type],
                             expectedOutputType: Type, scopeLevel: String) :
@@ -289,6 +301,7 @@ object TypeCheck {
 
 
     val everyType: Set[Type] = Set(PairType(AnyType, AnyType), ArrayType(AnyType), IntType, BoolType, CharType, StringType)
+    val comparisonOpType: Set[Type] = Set(IntType, CharType)
     // val everyArrayType: Set[Type] = Set()
 
     def findType(expr : Expr, scopeLevel : String) : Either[List[SemanticError], Type] = {
@@ -300,10 +313,10 @@ object TypeCheck {
             case Mod(x, y) => checkBinaryOp(x, y, Set(IntType), IntType, scopeLevel)
             case And(x, y) => checkBinaryOp(x, y, Set(BoolType), BoolType, scopeLevel)
             case Or(x, y) => checkBinaryOp(x, y, Set(BoolType), BoolType, scopeLevel)
-            case LT(x, y) => checkBinaryOp(x, y, Set(IntType), BoolType, scopeLevel)
-            case LTE(x, y) => checkBinaryOp(x, y, Set(IntType), BoolType, scopeLevel)
-            case GT(x, y) => checkBinaryOp(x, y, Set(IntType), BoolType, scopeLevel)
-            case GTE(x, y) => checkBinaryOp(x, y, Set(IntType), BoolType, scopeLevel)
+            case LT(x, y) => checkBinaryOp(x, y, comparisonOpType, BoolType, scopeLevel)
+            case LTE(x, y) => checkBinaryOp(x, y, comparisonOpType, BoolType, scopeLevel)
+            case GT(x, y) => checkBinaryOp(x, y, comparisonOpType, BoolType, scopeLevel)
+            case GTE(x, y) => checkBinaryOp(x, y, comparisonOpType, BoolType, scopeLevel)
             case E(x, y) => checkBinaryOp(x, y, everyType, BoolType, scopeLevel)
             case NE(x, y) => checkBinaryOp(x, y, everyType, BoolType, scopeLevel)
             case Not(x) => checkUnaryOp(x, Set(BoolType), BoolType, scopeLevel)
