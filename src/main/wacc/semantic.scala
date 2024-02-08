@@ -156,9 +156,12 @@ object Semantic {
                 case Left(errors) => Left(errors)
             }
             case Free(x) => findType(x, scopeLevel) match {
-                case Right(_) => Right(())
+                case Right(ArrayType(_)) => Right(())
+                case Right(PairType(_,_)) => Right(())
                 case Left(errors) => Left(errors)
+                case Right(_) => Left(List(SemanticError("Attempt to free non-dynamically allocated memory")))
             }
+
         }
     }
 

@@ -20,36 +20,26 @@ class ValidSemantic extends AnyFunSuite {
       
      
       if (validFile.isFile()) {
-        if(!validFile.getPath().startsWith("valid/runtimeErr")) {
          // Files
             test ("Testing: "  + validFile.getPath().substring("valid/".length())){
             assert(validFile.isFile())
             assert(testSemantics(validFile) == "success")
             }
-        } else {
-            test ("Testing: "  + validFile.getPath().substring("valid/".length())) {
-            assert(validFile.isFile())
-            assert(testSemantics(validFile) == "failure")
-          }
-        }
+
       } else {
         // Sub-directories
 
-        for(subValidFile <- validFile.listFiles())
-        if(!subValidFile.getPath().startsWith("valid/runtimeErr"))
+        for(subValidFile <- validFile.listFiles()) {
+
           test ("Testing: "  + subValidFile.getPath().substring("valid/".length())) {
             assert(subValidFile.isFile())
             assert(testSemantics(subValidFile) == "success")
-          }
-        else {
-          test ("Testing: "  + subValidFile.getPath().substring("valid/".length())) {
-            assert(subValidFile.isFile())
-            assert(testSemantics(subValidFile) == "failure")
-          }
-        }
+          
       }
 
     }
   }
 }
 
+  }
+}
