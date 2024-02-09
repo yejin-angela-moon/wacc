@@ -67,7 +67,7 @@ object Semantic {
             params.zip(args).find { 
                 case (param, arg) => 
                     val Right(argType) = findType(arg, "-g")
-                    println(s"comparing ${param.t} and $argType")
+                    // println(s"comparing ${param.t} and $argType")
                     param.t != argType
             } match {
                 case Some(res) => 
@@ -79,6 +79,20 @@ object Semantic {
         maybeArgs match {
             case Some(ArgList(args)) => compareLengthAndType(params, args)
             case None if params.isEmpty => Right(())
+        }
+    }
+
+    def findParamType(function: String, param: String) : Either[List[SemanticError], Type] = {
+        println(s"Lookup function table using key $function")
+        functionTable.get(function) match {
+            case Some(FuncInfo(_, ParamList(params))) =>
+                params.find(_.ident.x == param) match {
+                    case Some(p) => 
+                        println(s"param ${p.ident.x} type: ${p.t}")
+                        Right(p.t)
+                    case None => Left(List(SemanticError("Parameter not found")))
+                }
+            case None => Left(List(SemanticError("Parameter not found")))
         }
     }
 
@@ -96,6 +110,7 @@ object Semantic {
                         Left(List(SemanticError(s"Variable ${ident.x} already declared.")))
 
                     case None =>
+                        // println(s"checking rvalue $rvalue")
                         checkRvalue(rvalue, scopeLevel) match {
                             case Right(value) => {
                                 if(t :> value){
@@ -188,7 +203,10 @@ object Semantic {
                 case Right(_) => Left(List(SemanticError("Read expects an Int or Char type")))
                 case Left(value) => Left(value)
             }
-            case Return(x) => (findType(x, scopeLevel), getCurrentFunctionReturnType(scopeLevel)) match {
+            case Return(x) => 
+                println(s"Return(x): Comparing types ${findType(x, scopeLevel)}, ${getCurrentFunctionReturnType(scopeLevel)}")
+                println(s"scopelevel: $scopeLevel")
+                (findType(x, scopeLevel), getCurrentFunctionReturnType(scopeLevel)) match {
                 case (Right(t1), Right(t2)) if typeMatch(t1, t2) => Right(())
                 case (Right(t1), Right(t2)) => Left(List(SemanticError("Return type mismatch")))
                 case (Left(e1), Left(e2)) => Left(e1 ++ e2)
@@ -252,6 +270,9 @@ object Semantic {
                 case Right(PairType(a, b)) => Right(fromPairElemType(b))
                 case _ => Left(List(SemanticError("Can only use snd on pair type"))) 
             }
+            case Ident(x) if (!scopeLevel.endsWith("-g")) => 
+                println(s"Looking for parameter $x")
+                findParamType(scopeLevel.stripPrefix("-"), x)
             case e => findType(e.asInstanceOf[Expr], scopeLevel)
         }
     }
@@ -276,11 +297,17 @@ object Semantic {
             case None => 
                 println(s"Adding function ${f.ident.x} to the function table")
                 functionTable.addOne(f.ident.x -> FuncInfo(f.t, f.list))
-                None
+                stmtCheck(f.body, "-" + f.ident.x) match {
+                    case Right(_) => None
+                    case Left(err) => err
+                }
+                
         }
     }
+
         if (errors.isEmpty) Right(())
         else (Left(errors))
+
     }
 
         // funcs.foreach(f =>
@@ -310,6 +337,7 @@ object Semantic {
 
     def getCurrentFunctionReturnType(scopeLevel: String): Either[List[SemanticError], Type] = {
         val getFunctionName = scopeLevel.split("-")
+        println(s"function name: ${getFunctionName(1)}")
         (getFunctionName.lengthCompare(1) < 0) match {
             case true => Left(List(SemanticError("return from main is not allowed")))
             case false => functionTable.get(getFunctionName(1)) match {
@@ -345,6 +373,10 @@ object TypeCheck {
                                 Either[List[SemanticError], Type] = {
         (findType(x, scopeLevel), findType(y, scopeLevel)) match {
             case (Right(t1), Right(t2)) => {
+                // println(s"$x type ${findType(x, scopeLevel)}, $y type ${findType(y, scopeLevel)}")
+                // if (t1 != t2) {
+                //     return Left(List(SemanticError("BioOp type mismatch")))
+                // }
                     if(t1 :> t2 && t2 :> t1) {
                         if(expectedType.filter((x) => x :> t1).size >= 1)
                             return Right(expectedOutputType)
@@ -433,6 +465,9 @@ object TypeCheck {
             case BoolLit(x) => Right(BoolType)
             case CharLit(x) => Right(CharType)
             case StrLit(x) => Right(StringType)
+            case Ident(x) if (scopeLevel.charAt(scopeLevel.length() - 1) != 'g') => 
+                println(s"Looking for parameter $x at scope level $scopeLevel, function ${scopeLevel.substring(1, 1)}")
+                findParamType(scopeLevel.substring(1), x)
             case Ident(x) => getValueFromTable(x + scopeLevel)
             case ArrayElem(ident, exprList) =>
                 getValueFromTable(ident.x + scopeLevel).flatMap {
