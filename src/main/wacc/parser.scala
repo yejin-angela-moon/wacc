@@ -3,7 +3,7 @@ package wacc
 import parsley.{Parsley, Result}
 import parsley.{Success, Failure}
 import parsley.expr.chain
-import parsley.Parsley.{atomic, many, some, notFollowedBy}
+import parsley.Parsley.{atomic, many, some, notFollowedBy, lookAhead}
 import parsley.combinator.{sepBy, sepBy1, countSome, manyN}
 import parsley.expr.{precedence, SOps, InfixL, InfixR, InfixN, Prefix, Atoms}
 import parsley.syntax.character.charLift
@@ -70,13 +70,13 @@ object TypeParser {
     /* ⟨base-type⟩ ::= ‘int’ | ‘bool’ | ‘char’ | ‘string’ */
     lazy val `<base-type>` : Parsley[BaseType] =
         atomic(IntType <# "int" |
-        BoolType <# "bool"       |
+        BoolType <# "bool"      |
         CharType <# "char"       |
-        StringType <# "string"   )
+        StringType <# "string" )
 
     /* ⟨array-type⟩ ::= ⟨type⟩ ‘[’ ‘]’ */
-    lazy val `<array-type>` : Parsley[Type] = chain.postfix(
-        `<base-type>` | `<pair-type>`)(ArrayType from "[]")
+    lazy val `<array-type>` : Parsley[Type] = atomic(chain.postfix1(
+        `<base-type>`| `<pair-type>` )(ArrayType from "[]"))
 
     /* ⟨pair-type⟩ ::= ‘pair’ ‘(’ ⟨pair-elem-type⟩ ‘,’ ⟨pair-elem-type⟩ ‘)’ */
     lazy val `<pair-type>` : Parsley[PairType] = atomic(

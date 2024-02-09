@@ -33,7 +33,6 @@ class ValidSemantic extends AnyFunSuite {
           test ("Testing: "  + subValidFile.getPath().substring("valid/".length())) {
             assert(subValidFile.isFile())
             assert(testSemantics(subValidFile) == "success")
-          
       }
 
             }

@@ -1,5 +1,4 @@
 begin
-  pair(int, int) p = newpair(4, 5);
-  pair(pair, int) q = newpair(p, 6);
-  fst fst q = snd fst q
+  pair(pair, int) p = null;
+  read fst fst p
 end
