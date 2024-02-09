@@ -11,7 +11,7 @@ import TypeCheck._
 object Semantic {
     var symbolTable = new HashMap[String, Type]
 
-    def getValueFromTable(key: String): Either[List[SemanticError], Type] = {
+    def getValueFromTable(key: String, pos: (Int, Int)): Either[List[SemanticError], Type] = {
         @annotation.tailrec
         def search(scopeVar: String): Either[List[SemanticError], Type] = {
             symbolTable.get(scopeVar) match {
@@ -21,7 +21,7 @@ object Semantic {
                 case -1 => "" // No more scopes to backtrack
                 case index => scopeVar.substring(0, index)
                 }
-                if (nextScopeVar.isEmpty) Left(List(UndeclaredIdentifierError(key)))
+                if (nextScopeVar.isEmpty) Left(List(UndeclaredIdentifierError(key, pos)))
                 else search(nextScopeVar)
             }
         }
@@ -40,10 +40,10 @@ object Semantic {
 
                 symbolTable.get(scopeVarible) match {
                     case Some(_) => 
-                        Left(List(RedeclaredVariableError(ident.x)))
+                        Left(List(RedeclaredVariableError(ident.x, prog.pos)))
 
                     case None =>
-                        checkRvalue(rvalue, scopeLevel) match {
+                        checkRvalue(rvalue, scopeLevel, prog.pos) match {
                             case Right(value) => {
                                 if(t :> value){
                                     if(NullType :> value)
@@ -52,9 +52,9 @@ object Semantic {
                                         symbolTable.addOne(scopeVarible -> t)
                                     Right(())}
                                 else if (value :> t)
-                                    Left(List(CastingError(value,t)))
+                                    Left(List(CastingError(value, t, prog.pos)))
                                 else
-                                    Left(List(TypeError("Declare", Set(t), Set(value))))
+                                    Left(List(TypeError("Declare", Set(t), Set(value), prog.pos)))
                             }
 
 
@@ -63,13 +63,13 @@ object Semantic {
                 }
 
             case Assign(lvalue, rvalue) =>
-                val lResult = checkLvalue(lvalue, scopeLevel)
-                val rResult = checkRvalue(rvalue, scopeLevel)
+                val lResult = checkLvalue(lvalue, scopeLevel, prog.pos)
+                val rResult = checkRvalue(rvalue, scopeLevel, prog.pos)
 
                 (lResult, rResult) match {
                     case (Right(t1), Right(t2)) =>
                     if (t1 :> t2) Right(())
-                    else Left(List(TypeError("Assign", Set(t1), Set(t2))))
+                    else Left(List(TypeError("Assign", Set(t1), Set(t2), prog.pos)))
 
                     case (Left(errors1), Left(errors2)) =>
                     Left(errors1 ++ errors2)
@@ -82,12 +82,12 @@ object Semantic {
                 }
 
             case IfThenElse(x, s1, s2) =>
-                findType(x, scopeLevel) match {
+                findType(x, scopeLevel, prog.pos) match {
                     case Left(error) =>
                         Left(error)
 
                     case Right(t) if t != BoolType =>
-                        Left(List(TypeError("Condition", Set(BoolType), Set(t))))
+                        Left(List(TypeError("Condition", Set(BoolType), Set(t), prog.pos)))
 
                     case Right(_) =>
 
@@ -104,12 +104,12 @@ object Semantic {
 
             case WhileDo(x, s) =>
 
-                findType(x, scopeLevel) match {
+                findType(x, scopeLevel, prog.pos) match {
                     case Left(error) =>
                         Left(error)
 
                     case Right(t) if t != BoolType =>
-                        Left((List(TypeError("Condition", Set(BoolType), Set(t)))))
+                        Left((List(TypeError("Condition", Set(BoolType), Set(t), prog.pos))))
 
                     case Right(_) =>
                         stmtCheck(s, scopeLevel + "-w")
@@ -129,95 +129,95 @@ object Semantic {
                 }
 
             case Skip => Right(())
-            case Read(lvalue) => checkLvalue(lvalue, scopeLevel) match {
+            case Read(lvalue) => checkLvalue(lvalue, scopeLevel, prog.pos) match {
                 case Right(t) if t == IntType || t == CharType || t == NullType => Right(())
-                case Right(badType) => Left(List(TypeError("Read", Set(IntType, CharType), Set(badType))))
+                case Right(badType) => Left(List(TypeError("Read", Set(IntType, CharType), Set(badType), prog.pos)))
                 case Left(value) => Left(value)
             }
-            case Return(x) => (findType(x, scopeLevel), getCurrentFunctionReturnType(scopeLevel)) match {
+            case Return(x) => (findType(x, scopeLevel, prog.pos), getCurrentFunctionReturnType(scopeLevel, prog.pos)) match {
                 case (Right(t1), Right(t2)) if t2 :> t1 => Right(())
-                case (Right(t1), Right(t2)) => Left(List(TypeError("Return", Set(t2), Set(t1))))
+                case (Right(t1), Right(t2)) => Left(List(TypeError("Return", Set(t2), Set(t1), prog.pos)))
                 case (Left(e1), Left(e2)) => Left(e1 ++ e2)
                 case (_, Left(e)) => Left(e)
                 case (Left(e), _) => Left(e)
             }
-            case Exit(x) => findType(x, scopeLevel) match {
+            case Exit(x) => findType(x, scopeLevel, prog.pos) match {
                 case Right(IntType) => Right(())
-                case Right(badType) => Left(List(TypeError("Exit", Set(IntType), Set(badType))))
+                case Right(badType) => Left(List(TypeError("Exit", Set(IntType), Set(badType), prog.pos)))
                 case Left(errors) => Left(errors)
             }
-            case Print(x) => findType(x, scopeLevel) match {
+            case Print(x) => findType(x, scopeLevel, prog.pos) match {
                 case Right(_) => Right(())
                 case Left(errors) => Left(errors)
             }
             case Println(x) => 
-                findType(x, scopeLevel) match {
+                findType(x, scopeLevel, prog.pos) match {
                 case Right(_) => Right(())
                 case Left(errors) => Left(errors)
             }
-            case Free(x) => findType(x, scopeLevel) match {
+            case Free(x) => findType(x, scopeLevel, prog.pos) match {
                 case Right(ArrayType(_)) | Right(PairType(_,_)) | Right(NullType) => Right(()) 
                 case Left(errors) => Left(errors)
-                case Right(_) => Left(List(FreeingError()))
+                case Right(_) => Left(List(FreeingError(prog.pos)))
             }
 
         }
     }
 
-    def checkLvalue(l: Lvalue, scopeLevel: String): Either[List[SemanticError], Type] = {
+    def checkLvalue(l: Lvalue, scopeLevel: String, pos: (Int, Int)): Either[List[SemanticError], Type] = {
         l match {
             case Ident(x) =>
-                findType(Ident(x), scopeLevel)
+                findType(Ident(x), scopeLevel, pos)
             case ArrayElem(ident, exprList) =>
-                findType(ArrayElem(ident, exprList), scopeLevel)
-            case Fst(lvalue) => checkLvalue(lvalue, scopeLevel) match {
+                findType(ArrayElem(ident, exprList), scopeLevel, pos)
+            case Fst(lvalue) => checkLvalue(lvalue, scopeLevel, pos) match {
                 case Right(PairType(a, b)) => Right(fromPairElemType(a))
                 case Right(NullType) => Right(NullType)
-                case _ => Left(List(IllegalUsedFunctionOnNonPairTypeError("fst")))
+                case _ => Left(List(IllegalUsedFunctionOnNonPairTypeError("fst", pos)))
               //  case error => error 
             }
-            case Snd(lvalue) => checkLvalue(lvalue, scopeLevel) match {
+            case Snd(lvalue) => checkLvalue(lvalue, scopeLevel, pos) match {
                 case Right(PairType(a, b)) => 
                     print("the value of b is " + b)
                     Right(fromPairElemType(b))
                 case Right(NullType) => Right(NullType)
-                case _ => Left(List(IllegalUsedFunctionOnNonPairTypeError("snd")))
+                case _ => Left(List(IllegalUsedFunctionOnNonPairTypeError("snd", pos)))
                // case error => error 
             }
             }
         }
 
 
-    def checkRvalue(r : Rvalue, scopeLevel: String) : Either[List[SemanticError], Type] = {
+    def checkRvalue(r : Rvalue, scopeLevel: String, pos: (Int, Int)) : Either[List[SemanticError], Type] = {
         r match{
             case ArrayLit(exprList) =>
-                checkArrayList(exprList.getOrElse(Nil), scopeLevel)
+                checkArrayList(exprList.getOrElse(Nil), scopeLevel, pos)
             case NewPair(x1, x2) =>
 
                 for {
-                    type1 <- findType(x1, scopeLevel) // Find type of x1
-                    type2 <- findType(x2, scopeLevel) // Find type of x2
+                    type1 <- findType(x1, scopeLevel, pos) // Find type of x1
+                    type2 <- findType(x2, scopeLevel, pos) // Find type of x2
                     pairElemType1 = toPairElemType(type1) // Convert to PairElemType if necessary
                     pairElemType2 = toPairElemType(type2) // Convert to PairElemType if necessary
                 } yield PairType(pairElemType1, pairElemType2)
 
-            case Call(ident, x) => getValueFromTable(ident.x + scopeLevel)
+            case Call(ident, x) => getValueFromTable(ident.x + scopeLevel, pos)
             case Fst(lvalue) => 
                 println("the lvalue is " + lvalue)
-                checkLvalue(lvalue, scopeLevel) match {
+                checkLvalue(lvalue, scopeLevel, pos) match {
                 case Right(PairType(a, b)) => Right(fromPairElemType(a))
                 case Right(NullType) => Right(NullType)
                 case a => 
                     println(a)
                     println(symbolTable)
-                    Left(List(IllegalUsedFunctionOnNonPairTypeError("fst"))) 
+                    Left(List(IllegalUsedFunctionOnNonPairTypeError("fst", pos))) 
             }
-            case Snd(lvalue) => checkLvalue(lvalue, scopeLevel) match {
+            case Snd(lvalue) => checkLvalue(lvalue, scopeLevel, pos) match {
                 case Right(PairType(a, b)) => Right(fromPairElemType(b))
                 case Right(NullType) => Right(NullType)
-                case _ => Left(List(IllegalUsedFunctionOnNonPairTypeError("snd"))) 
+                case _ => Left(List(IllegalUsedFunctionOnNonPairTypeError("snd", pos))) 
             }
-            case e => findType(e.asInstanceOf[Expr], scopeLevel)
+            case e => findType(e.asInstanceOf[Expr], scopeLevel, pos)
         }
     }
 
@@ -232,10 +232,10 @@ object Semantic {
         case _ => NullType
     }
 
-    def checkFuncsList(funcs: List[Func]): Either[List[SemanticError], Unit] = {
+    def checkFuncsList(funcs: List[Func], pos: (Int, Int)): Either[List[SemanticError], Unit] = {
         funcs.foreach(f =>
             symbolTable.get(f.ident.x) match {
-                case Some(value) => Left(List(RedefinedFunctionError(f.ident.x)))
+                case Some(value) => Left(List(RedefinedFunctionError(f.ident.x, pos)))
                 case None => symbolTable.addOne(f.ident.x -> f.t)
             }
         )
@@ -255,13 +255,13 @@ object Semantic {
         }
     }
 
-    def getCurrentFunctionReturnType(scopeLevel: String): Either[List[SemanticError], Type] = {
+    def getCurrentFunctionReturnType(scopeLevel: String, pos: (Int, Int)): Either[List[SemanticError], Type] = {
         val getFunctionName = scopeLevel.split("-")
         (getFunctionName.lengthCompare(1) < 0) match {
-            case true => Left(List(ScopeError("main")))
+            case true => Left(List(ScopeError("main", pos)))
             case false => symbolTable.get(getFunctionName(1)) match {
                 case Some(returnType) => Right(returnType)
-                case None => Left(List(ScopeError("outside of function")))
+                case None => Left(List(ScopeError("outside of function", pos)))
             }
         }
 
@@ -274,7 +274,7 @@ object Semantic {
 
         prog match {
             case Program(funcs, body) =>
-                (checkFuncsList(funcs), stmtCheck(body, "-g")) match {
+                (checkFuncsList(funcs, prog.pos), stmtCheck(body, "-g")) match {
                     case (Right(_), Right(_)) => Right(())
                     case (Left(err1), Left(err2)) => Left(err1 ++ err2)
                     case (Left(errs), _) => Left(errs)
@@ -288,56 +288,56 @@ object Semantic {
 object TypeCheck {
 
     private def checkBinaryOp(x: Expr, y: Expr, expectedType: Set[Type],
-                            expectedOutputType: Type, scopeLevel: String) :
+                            expectedOutputType: Type, scopeLevel: String, pos: (Int, Int)) :
                                 Either[List[SemanticError], Type] = {
-        (findType(x, scopeLevel), findType(y, scopeLevel)) match {
+        (findType(x, scopeLevel, pos), findType(y, scopeLevel, pos)) match {
             case (Right(t1), Right(t2)) => {
                     if(t1 :> t2 && t2 :> t1) {
                         if(expectedType.filter((x) => x :> t1).size >= 1)
                             return Right(expectedOutputType)
 
-                        return Left(List(TypeError("BinOp", expectedType, Set(t1))))
+                        return Left(List(TypeError("BinOp", expectedType, Set(t1), pos)))
                     }
-                    return Left(List(TypeDifferentError("BinOp", Set(t1, t2))))
+                    return Left(List(TypeDifferentError("BinOp", Set(t1, t2), pos)))
                 }
             case (Left(a), Left(b)) => Left(a ++ b)
             case (Left(err), _) => Left(err)
             case (_, Left(err)) => Left(err) 
-            case _ => Left(List(UndefinedError()))
+            case _ => Left(List(UndefinedError(pos)))
             }
         }
 
     private def checkUnaryOp(x: Expr, expectedType: Set[Type],
-                            expectedOutputType: Type, scopeLevel: String) :
+                            expectedOutputType: Type, scopeLevel: String, pos: (Int, Int)) :
                                 Either[List[SemanticError], Type] = {
-        (findType(x, scopeLevel)) match {
+        (findType(x, scopeLevel, pos)) match {
             case Right(t1) => t1 match {
                 case ArrayType(t) => Right(ArrayType(t))
                 case PairType(p1, p2) => Right(PairType(p1, p2))
                 case _ if expectedType.filter((x) => x :> t1).size >= 1 =>
                     Right(expectedOutputType)
-                case badType => Left(List(TypeError("Unary operation", expectedType, Set(badType))))
+                case badType => Left(List(TypeError("Unary operation", expectedType, Set(badType), pos)))
             }
             case Left(err) => Left(err)
         }
     }
 
-    def checkArrayList(arrayList: List[Expr], scopeLevel: String): Either[List[SemanticError], Type] = {
+    def checkArrayList(arrayList: List[Expr], scopeLevel: String, pos: (Int, Int)): Either[List[SemanticError], Type] = {
         arrayList match {
             case Nil => Right(AnyType) // Empty arrays default to AnyType
             case head :: tail =>
-                val headTypeResult = findType(head, scopeLevel)
+                val headTypeResult = findType(head, scopeLevel, pos)
                 headTypeResult.flatMap { headType =>
                     // Check each element in the tail has the same type as the head
                     val allMatch = tail.forall { expr =>
-                        findType(expr, scopeLevel) match {
+                        findType(expr, scopeLevel, pos) match {
                             case Right(t) => typeMatch(t, headType)
                             case _ => false
                         }
                     }
                     // If all match, return ArrayType of the head's type, else return an error
                     if (allMatch) Right(ArrayType(headType))
-                    else Left(List(MultipleTypesInArrayError()))
+                    else Left(List(MultipleTypesInArrayError(pos)))
                 }
         }
     }
@@ -347,36 +347,36 @@ object TypeCheck {
     val comparisonOpType: Set[Type] = Set(IntType, CharType)
     // val everyArrayType: Set[Type] = Set()
 
-    def findType(expr : Expr, scopeLevel : String) : Either[List[SemanticError], Type] = {
+    def findType(expr : Expr, scopeLevel : String, pos: (Int, Int)) : Either[List[SemanticError], Type] = {
         expr match {
-            case Add(x, y) => checkBinaryOp(x, y, Set(IntType), IntType, scopeLevel)
-            case Sub(x, y) => checkBinaryOp(x, y, Set(IntType), IntType, scopeLevel)
-            case Mul(x, y) => checkBinaryOp(x, y, Set(IntType), IntType, scopeLevel)
-            case Div(x, y) => checkBinaryOp(x, y, Set(IntType), IntType, scopeLevel)
-            case Mod(x, y) => checkBinaryOp(x, y, Set(IntType), IntType, scopeLevel)
-            case And(x, y) => checkBinaryOp(x, y, Set(BoolType), BoolType, scopeLevel)
-            case Or(x, y) => checkBinaryOp(x, y, Set(BoolType), BoolType, scopeLevel)
-            case LT(x, y) => checkBinaryOp(x, y, comparisonOpType, BoolType, scopeLevel)
-            case LTE(x, y) => checkBinaryOp(x, y, comparisonOpType, BoolType, scopeLevel)
-            case GT(x, y) => checkBinaryOp(x, y, comparisonOpType, BoolType, scopeLevel)
-            case GTE(x, y) => checkBinaryOp(x, y, comparisonOpType, BoolType, scopeLevel)
-            case E(x, y) => checkBinaryOp(x, y, everyType, BoolType, scopeLevel)
-            case NE(x, y) => checkBinaryOp(x, y, everyType, BoolType, scopeLevel)
-            case Not(x) => checkUnaryOp(x, Set(BoolType), BoolType, scopeLevel)
-            case Neg(x) => checkUnaryOp(x, Set(IntType), IntType, scopeLevel)
-            case Len(x) => checkUnaryOp(x, Set(ArrayType(AnyType), StringType), IntType, scopeLevel)
-            case Ord(x) => checkUnaryOp(x, Set(CharType), IntType, scopeLevel)
-            case Chr(x) => checkUnaryOp(x, Set(IntType), CharType, scopeLevel)
+            case Add(x, y) => checkBinaryOp(x, y, Set(IntType), IntType, scopeLevel, pos)
+            case Sub(x, y) => checkBinaryOp(x, y, Set(IntType), IntType, scopeLevel, pos)
+            case Mul(x, y) => checkBinaryOp(x, y, Set(IntType), IntType, scopeLevel, pos)
+            case Div(x, y) => checkBinaryOp(x, y, Set(IntType), IntType, scopeLevel, pos)
+            case Mod(x, y) => checkBinaryOp(x, y, Set(IntType), IntType, scopeLevel, pos)
+            case And(x, y) => checkBinaryOp(x, y, Set(BoolType), BoolType, scopeLevel, pos)
+            case Or(x, y) => checkBinaryOp(x, y, Set(BoolType), BoolType, scopeLevel, pos)
+            case LT(x, y) => checkBinaryOp(x, y, comparisonOpType, BoolType, scopeLevel, pos)
+            case LTE(x, y) => checkBinaryOp(x, y, comparisonOpType, BoolType, scopeLevel, pos)
+            case GT(x, y) => checkBinaryOp(x, y, comparisonOpType, BoolType, scopeLevel, pos)
+            case GTE(x, y) => checkBinaryOp(x, y, comparisonOpType, BoolType, scopeLevel, pos)
+            case E(x, y) => checkBinaryOp(x, y, everyType, BoolType, scopeLevel, pos)
+            case NE(x, y) => checkBinaryOp(x, y, everyType, BoolType, scopeLevel, pos)
+            case Not(x) => checkUnaryOp(x, Set(BoolType), BoolType, scopeLevel, pos)
+            case Neg(x) => checkUnaryOp(x, Set(IntType), IntType, scopeLevel, pos)
+            case Len(x) => checkUnaryOp(x, Set(ArrayType(AnyType), StringType), IntType, scopeLevel, pos)
+            case Ord(x) => checkUnaryOp(x, Set(CharType), IntType, scopeLevel, pos)
+            case Chr(x) => checkUnaryOp(x, Set(IntType), CharType, scopeLevel, pos)
             case IntLit(x) => Right(IntType)
             case BoolLit(x) => Right(BoolType)
             case CharLit(x) => Right(CharType)
             case StrLit(x) => Right(StringType)
-            case Ident(x) => getValueFromTable(x + scopeLevel)
+            case Ident(x) => getValueFromTable(x + scopeLevel, pos)
             case ArrayElem(ident, exprList) =>
-                getValueFromTable(ident.x + scopeLevel).flatMap {
+                getValueFromTable(ident.x + scopeLevel, pos).flatMap {
                     case ArrayType(t) =>
                         val arrayDepth = getArraydepth(1, t)
-                        val indexTypeChecks = exprList.map(findType(_, scopeLevel))
+                        val indexTypeChecks = exprList.map(findType(_, scopeLevel, pos))
                         val indexErrors = indexTypeChecks.collect { case Left(errs) => errs }.flatten
 
                         if (indexErrors.nonEmpty) {
@@ -384,7 +384,7 @@ object TypeCheck {
                         } else {
                             // Ensure all index types are IntType
                             if (arrayDepth < indexTypeChecks.length) {
-                                return Left(List(ArrayDimensionalError(indexTypeChecks.length)))
+                                return Left(List(ArrayDimensionalError(indexTypeChecks.length, pos)))
                             }
 
                             val otherTypes = Set[Type]() 
@@ -398,12 +398,12 @@ object TypeCheck {
                             if (allIndicesAreInt) {
                                 Right(t) // Return the type of the array element
                             } else {
-                                Left(List(TypeError("Array indices", Set(IntType), otherTypes)))
+                                Left(List(TypeError("Array indices", Set(IntType), otherTypes, pos)))
                             }
                     }
-                case _ => Left(List(ArrayTypeError(ident.x)))
+                case _ => Left(List(ArrayTypeError(ident.x, pos)))
                 }
-            case Paran(x) => findType(x, scopeLevel)
+            case Paran(x) => findType(x, scopeLevel, pos)
             case PairLit => Right(NullType)
         }
     }
@@ -415,8 +415,8 @@ object TypeCheck {
         }
     }
 
-    def checkTypes(e1: Expr, e2: Expr, scopeLevel: String) : Boolean = {
-        (findType(e1, scopeLevel), findType(e2, scopeLevel)) match {
+    def checkTypes(e1: Expr, e2: Expr, scopeLevel: String, pos: (Int, Int)) : Boolean = {
+        (findType(e1, scopeLevel, pos), findType(e2, scopeLevel, pos)) match {
             case (Right(t1), Right(t2)) => typeMatch(t1, t2)
             case _ => false
         }

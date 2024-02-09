@@ -198,7 +198,7 @@ object ast {
         def eval(scope: String): Result[List[Error],Expr] = Success(this)
     }
     case class Ident(x: String) extends Expr with Lvalue {
-        def eval(scope: String): Result[List[Error],Expr] = getValueFromTable(x + scope) match {
+        def eval(scope: String): Result[List[Error],Expr] = getValueFromTable(x + scope, (0, 0)) match {
             case Right(PairType(_,_)) => Success(PairLit)
             case Right(ArrayType(_)) => Success(ArrayElem(this, List(this)))
             case Right(IntType) => Success(IntLit(0))
