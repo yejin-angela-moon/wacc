@@ -2,7 +2,7 @@ package wacc
 
 import parsley.{Parsley, Result}
 import parsley.expr.chain
-import parsley.Parsley.{atomic, many, some}
+import parsley.Parsley.{atomic, many, some, notFollowedBy}
 import parsley.combinator.{sepBy, sepBy1, countSome, manyN}
 import parsley.expr.{precedence, SOps, InfixL, InfixR, InfixN, Prefix, Atoms}
 import parsley.syntax.character.charLift
@@ -62,9 +62,9 @@ object TypeParser {
 
     /* ⟨type⟩ ::= ⟨base-type⟩ | ⟨array-type⟩ | ⟨pair-type⟩ */
     lazy val `<type>` : Parsley[Type] = atomic(
-        `<array-type>` <|>
-        `<base-type>` <|>
-        `<pair-type>`
+        atomic(`<base-type>` <~ notFollowedBy("[]")) <|>
+        atomic(`<pair-type>` <~ notFollowedBy("[]")) <|>
+        `<array-type>`
     )
 
     /* ⟨base-type⟩ ::= ‘int’ | ‘bool’ | ‘char’ | ‘string’ */

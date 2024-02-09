@@ -16,11 +16,13 @@ object Semantic {
     /* Table for storing Function Ident -> FuncInfo(Type, ParamList) */
     var functionTable = new HashMap[String, FuncInfo]
 
+    /* The value to be stored in the function table with corresponding function name key.
+       Stores function return type and parameters */
     case class FuncInfo(t: Type, params: ParamList)
 
-    /* Get the Type from the table */
+    /* Get the Type of a stored variable from the symbol table */
     def getValueFromTable(key: String, pos: (Int, Int)): Either[List[SemanticError], Type] = {
-        @annotation.tailrec
+        /* Helper function to search through the symbol table using the key */
         def search(scopeVar: String): Either[List[SemanticError], Type] = {
             symbolTable.get(scopeVar) match {
             case Some(value) => Right(value)
@@ -33,11 +35,11 @@ object Semantic {
                 else search(nextScopeVar)
             }
         }
-
-
         search(key)
     }
 
+    /* Check the semantic validity of the statement, and point out any type mismatch, bad scopes or
+       unexpected identifiers. */
     def stmtCheck(prog: Stmt, scopeLevel: String) :
         Either[List[SemanticError], Unit] = {
         prog match {
@@ -55,6 +57,7 @@ object Semantic {
                         /* Check if the rvalue has the same type as declared */
                         checkRvalue(rvalue, scopeLevel, prog.pos) match {
                             case Right(value) => {
+                                /* Add a new mapping to the symbol table if declaration is valid. */
                                 if(t :> value){
                                     if(NullType :> value)
                                         symbolTable.addOne(scopeVar -> value)
@@ -66,8 +69,6 @@ object Semantic {
                                 else
                                     Left(List(TypeError("Declare", Set(t), Set(value), prog.pos)))
                             }
-
-
                             case Left(value) => Left(value)
                         }
                 }
@@ -103,10 +104,10 @@ object Semantic {
                         Left(List(TypeError("Condition", Set(BoolType), Set(t), prog.pos)))
 
                     case Right(_) =>
-
+                        /* Add scope level "-i" for an IF block, and "-e" for an ELSE block. */
                         val res1 = stmtCheck(s1, scopeLevel + "-i")
                         val res2 = stmtCheck(s2, scopeLevel + "-e")
-
+                        /* IfThenElse statement is only valid if both IF and ELSE blocks are valid. */
                         (res1, res2) match {
                             case (Right(_), Right(_)) => Right(())
                             case (Left(errors1), Right(_)) => Left(errors1)
@@ -117,19 +118,19 @@ object Semantic {
 
             /* Check if the type of the cond is a bool, then check the statement body */
             case WhileDo(x, s) =>
-
                 findType(x, scopeLevel, prog.pos) match {
                     case Left(error) =>
                         Left(error)
 
                     case Right(t) if t != BoolType =>
                         Left((List(TypeError("Condition", Set(BoolType), Set(t), prog.pos))))
-
+                    /* Add scope level "-w" for a WHILE block if valid. */
                     case Right(_) =>
                         stmtCheck(s, scopeLevel + "-w")
                 }
 
-            /* Check the statement of the body */
+            /* Check the statement of a Begin-End block. Distinguished from the global scope "-g" where the 
+               program is wrapped in Begin-End. */            
             case BeginEnd(s) =>
                 stmtCheck(s, scopeLevel + "-b")
 
@@ -145,10 +146,10 @@ object Semantic {
                     case (Right(_), Left(errors2)) => Left(errors2)
                 }
 
-            /* Skip return nothing */
+            /* Skip return nothing. Always valid. */
             case Skip => Right(())
 
-            /* Check the lvalue is either a int, char or a null type */
+            /* Check the lvalue is one of integer, char or a null type. Invalid otherwise. */
             case Read(lvalue) =>
                 println(symbolTable)
                 checkLvalue(lvalue, scopeLevel, prog.pos) match {
@@ -157,21 +158,22 @@ object Semantic {
                 case Left(value) => Left(value)
             }
 
-            /* Check that the return is inside of a function body and has the same type as what the function defined */
-            case Return(x) => (findType(x, scopeLevel, prog.pos), getCurrentFunctionReturnType(scopeLevel, prog.pos)) match {
+            /* Check that the return is inside of a function body and has the same type as the defined function return type. */            case Return(x) => (findType(x, scopeLevel, prog.pos), getCurrentFunctionReturnType(scopeLevel, prog.pos)) match {
                 case (Right(t1), Right(t2)) if t2 :> t1 => Right(())
                 case (Right(t1), Right(t2)) => Left(List(TypeError("Return", Set(t2), Set(t1), prog.pos)))
                 case (Left(e1), Left(e2)) => Left(e1 ++ e2)
                 case (_, Left(e)) => Left(e)
                 case (Left(e), _) => Left(e)
             }
+
+            /* Check if the expression evaluates to an integer. */
             case Exit(x) => findType(x, scopeLevel, prog.pos) match {
                 case Right(IntType) => Right(())
                 case Right(badType) => Left(List(TypeError("Exit", Set(IntType), Set(badType), prog.pos)))
                 case Left(errors) => Left(errors)
             }
 
-            /* Check that the expression can be compute */
+            /* Check that the expression can be computed */
             case Print(x) => findType(x, scopeLevel, prog.pos) match {
                 case Right(_) => Right(())
                 case Left(errors) => Left(errors)
@@ -184,16 +186,15 @@ object Semantic {
                 case Left(errors) => Left(errors)
             }
 
-            /* Check if the expresssion is an Array, a Pair or Null */
-            case Free(x) => findType(x, scopeLevel, prog.pos) match {
+            /* Check if the expresssion is an Array, a Pair or Null. Only dynamically allocated memory can be freed. */            case Free(x) => findType(x, scopeLevel, prog.pos) match {
                 case Right(ArrayType(_)) | Right(PairType(_,_)) | Right(NullType) => Right(()) 
                 case Left(errors) => Left(errors)
                 case Right(_) => Left(List(FreeingError(prog.pos)))
             }
-
         }
     }
 
+    /* Determine the type of the Lvalue in the given scope. */
     def checkLvalue(l: Lvalue, scopeLevel: String, pos: (Int, Int)): Either[List[SemanticError], Type] = {
         l match {
             case Ident(x) =>
@@ -215,7 +216,7 @@ object Semantic {
             }
         }
 
-
+    /* Determine the type of the Rvalue in the given scope. */
     def checkRvalue(r : Rvalue, scopeLevel: String, pos: (Int, Int)) : Either[List[SemanticError], Type] = {
         r match{
             /* Check that every element have the same type and return that type */
@@ -230,6 +231,8 @@ object Semantic {
                     pairElemType2 = toPairElemType(type2) // Convert to PairElemType if necessary
                 } yield PairType(pairElemType1, pairElemType2)
 
+            /* Check that the function is already defined, and the argument list matches the parameter list, in
+               terms of the number of types. Invalid otherwise. */
             case Call(ident, x) => 
                 functionTable.get(ident.x) match {
                     case Some(FuncInfo(t, ps)) =>
@@ -240,8 +243,8 @@ object Semantic {
                     case None => Left(List(UndeclaredIdentifierError(ident.x, pos)))
 
                 }
-            case Fst(lvalue) => 
-                
+            /* Check that fst is used on a pair. */
+            case Fst(lvalue) =>    
                 checkLvalue(lvalue, scopeLevel, pos) match {
                 case Right(PairElemType1) => Left(List(IllegalUsedFunctionOnNonPairTypeError("fst", pos))) 
                 case Right(PairType(a, b)) => Right(fromPairElemType(a))
@@ -249,6 +252,7 @@ object Semantic {
                 case a => 
                     Left(List(IllegalUsedFunctionOnNonPairTypeError("fst", pos))) 
             }
+            /* Check that snd is used on a pair. */
             case Snd(lvalue) => checkLvalue(lvalue, scopeLevel, pos) match {
                 case Right(PairType(a, b)) => Right(fromPairElemType(b))
                 case Right(NullType) => Right(NullType)
@@ -258,6 +262,7 @@ object Semantic {
         }
     }
 
+    /* Check if the argument list matches the parameter list, by comparing their lengths and types under the given scope. */
     def matchArgListWithParamList(args: Option[ArgList], paramList: ParamList, scopeLevel: String, pos: (Int, Int)):
         Either[List[SemanticError], Unit] = {
         (args, paramList.params) match {
@@ -269,7 +274,7 @@ object Semantic {
                     }
                 }
 
-                // Collect any errors
+                /* Collect any errors returned during the comparison. */
                 val errors = typeChecks.collect { case Left(error) => error }.flatten
                 if (errors.isEmpty) Right(())
                 else return Left(errors)
@@ -291,6 +296,8 @@ object Semantic {
         case _ => NullType
     }
 
+    /* Goes through the list of functions and add the function-funcInfo mappings to the function table. Look for any 
+       function redefinition error. */
     def checkFuncsList(funcs: List[Func], pos: (Int, Int)): Either[List[SemanticError], Unit] = {
 
         funcs.foreach(f =>
@@ -305,6 +312,7 @@ object Semantic {
             }
         )
 
+        /* Add the function parameters to the symbol table as well. Look for any redeclaration of parameters. */
         funcs.foldLeft[Either[List[SemanticError], Unit]](Right(())) { (acc, func) =>
             acc.flatMap { _ =>
 
@@ -317,16 +325,17 @@ object Semantic {
                                 Left(List(RedeclaredVariableError(param.ident.x, pos)))
                         }
                 }
-
+                /* Check the validity of the function body. */
                 stmtCheck(func.body, "-" + func.ident.x + "-g")
             }
         }
     }
 
-
-
+    /* Return the return type of the function that the semantic checker is currently under. 
+       Called when a Return statement is under semantic check. */
     def getCurrentFunctionReturnType(scopeLevel: String, pos: (Int, Int)): Either[List[SemanticError], Type] = {
         val getFunctionName = scopeLevel.split("-")
+        /* If the scope level is not a function, Return statement must be invalid. */
         (getFunctionName.lengthCompare(1) < 0) match {
             case true => Left(List(ScopeError("main", pos)))
             case false => functionTable.get(getFunctionName(1)) match {
@@ -337,14 +346,17 @@ object Semantic {
 
     }
 
-
+    /* The semantic analyser function to check the semantic validity of the parsed program.
+       Returns the list of errors collected. Valid otherwise. */
     def semanticAnalysis(prog: Stmt) : Either[List[Error], Unit] = {
+        /* Clears the symbol table and function table before adding mappings to them. */
         symbolTable.clear()
         functionTable.clear()
         val lineNumber = 0
 
         prog match {
             case Program(funcs, body) =>
+                /* Initiate semantic check starting from scope level "-g", global. */
                 (checkFuncsList(funcs, prog.pos), stmtCheck(body, "-g")) match {
                     case (Right(_), Right(_)) => Right(())
                     case (Left(err1), Left(err2)) => Left(err1 ++ err2)
@@ -357,7 +369,8 @@ object Semantic {
 }
 
 object TypeCheck {
-
+    /* Evaluate the type of a binary operation expression by evaluating types of both sides and finally evaluating
+       the type after applying the operation. */
     private def checkBinaryOp(x: Expr, y: Expr, expectedType: Set[Type],
                             expectedOutputType: Type, scopeLevel: String, pos: (Int, Int)) :
                                 Either[List[SemanticError], Type] = {
@@ -378,6 +391,7 @@ object TypeCheck {
             }
         }
 
+    /* Evaluate the type of a unary operation expression. */
     private def checkUnaryOp(x: Expr, expectedType: Set[Type],
                             expectedOutputType: Type, scopeLevel: String, pos: (Int, Int)) :
                                 Either[List[SemanticError], Type] = {
@@ -393,6 +407,7 @@ object TypeCheck {
         }
     }
 
+    /* Return the type of a the */
     def checkArrayList(arrayList: List[Expr], scopeLevel: String, pos: (Int, Int)): Either[List[SemanticError], Type] = {
         arrayList match {
             case Nil => Right(AnyType) // Empty arrays default to AnyType
