@@ -270,7 +270,7 @@ object Semantic {
         funcs.foreach(f =>
             functionTable.get(f.ident.x) match {
                 case Some(_) =>
-                    Left(List(SemanticError(s"Function redefinition error: illegal redefinition of function ${f.ident.x}")))
+                    return Left(List(SemanticError(s"Function redefinition error: illegal redefinition of function ${f.ident.x}")))
                 case None =>
                     // symbolTable.addOne(f.ident.x -> f.t)
                     functionTable.addOne(f.ident.x -> FuncInfo(f.t, f.list))
