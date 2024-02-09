@@ -17,8 +17,8 @@ class ValidSyntax extends AnyFunSuite {
   for(subDir <- subDirs) {
     println ("Cheking valid files in \"" + subDir.getPath().substring("valid/".length()) + "\"") 
     for(validFile <- subDir.listFiles()) {
-      
-     
+
+
       if (validFile.isFile()) {
          // Files
 
