@@ -5,7 +5,7 @@ stages:
 - test
 
 before_script:
-  - apt-get update && apt-get install -y curl
+  - apt-get update -y && apt-get install -y curl
   - curl -fLo cs https://github.com/VirtusLab/scala-cli/releases/latest/download/cs-x86_64-pc-linux
   - sudo chmod +x cs
   - sudo mv cs /usr/local/bin/scala-cli
