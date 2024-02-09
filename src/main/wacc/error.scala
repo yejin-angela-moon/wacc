@@ -32,7 +32,6 @@ object Errors {
     
         // Function to print the error message with the lines that the error occurred
         def printErrorMessage() = {
-            println(s"$errorType in $filename (line $line, column $column)")
             println("  " + log)
             printSurroundingLines(line)
         }
