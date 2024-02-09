@@ -5,7 +5,7 @@ import ast.Ident
 import ast.Type
 
 
-trait Error {
+trait Error {   
   val errorType : String
 
   val log: String
@@ -24,8 +24,8 @@ trait Error {
 
   def printErrorMessage() = {
      // println("Errors detected during compilation! Exit code " + exitStatus + " returned.")
-      println(errorType + ": ")// in (" + startLine + ", " + endLine + ")")
-      println(log)
+      println(errorType + " in line x")// in (" + startLine + ", " + endLine + ")")
+      println("  " + log)
     
   }
 
@@ -53,13 +53,13 @@ class SemanticError() extends Error {
     override val errorType = "Type Error"
     val expectedTypes = expected.mkString(" | ") 
     val foundTypes = found.mkString(" , ") 
-    override val log: String = s"$description type mismatch\nExpected: $expectedTypes, found: $foundTypes"
+    override val log: String = s"$description type mismatch\n  Expected: $expectedTypes\n  Found: $foundTypes"
   }
 
   case class TypeDifferentError(description: String, types: Set[Type]) extends SemanticError {
     override val errorType = "Type Difference Error"
     val getType = types.mkString(" , ") 
-    override val log: String = s"$description type different\nExpected the same type, found: $getType"
+    override val log: String = s"$description type different\n  Expected the same type\n  Found: $getType"
   }
 
   case class UndefinedFunctionError(ident: Ident) extends SemanticError {
@@ -91,7 +91,7 @@ class SemanticError() extends Error {
  
   case class NumOfArgumentsError(ident: Ident, expected: Int, found: Int) extends SemanticError {
     override val errorType = "Number Of Arguments Error"
-    override val log =  s"Incorrect number of arguments in call to ${ident.x}\nExpected: $expected, found: $found"
+    override val log =  s"Incorrect number of arguments in call to ${ident.x}\n  Expected: $expected\n  Found: $found"
   
   }
 
@@ -107,7 +107,7 @@ class SemanticError() extends Error {
 
   case class ArrayOutOfBoundsError(ident: Ident, max: Int, found: Int) extends SemanticError {
     override val errorType = "Array Out Of Bounds Error"
-    override val log =  s"Array ${ident.x} out of bounds\nMaximum: $max, found: $found"
+    override val log =  s"Array ${ident.x} out of bounds\n  Maximum: $max\n  Found: $found"
   }
 
   case class MultipleTypesInArrayError() extends SemanticError {
