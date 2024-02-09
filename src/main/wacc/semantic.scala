@@ -4,7 +4,7 @@ import scala.collection.mutable.{HashMap}
 import parsley.{Result, Success, Failure}
 import ast._
 // import java.lang.foreign.MemorySegment.Scope
-import Error._
+import Errors._
 import Semantic._
 import TypeCheck._
 

@@ -5,6 +5,7 @@ import parsley.Failure
 import parsley.Success
 import java.io._
 import scala.util._
+import Errors._
 
 class InvalidSemantic extends AnyFunSuite {
   import TestSemantics.testSemantics
@@ -42,6 +43,7 @@ class InvalidSemantic extends AnyFunSuite {
 
 object TestSemantics {
   def testSemantics(f: File) : String = {
+    Errors.setCurrentFilename(f.getPath())
     parser.parse(f.getPath()) match {
       case Success(prog) => Semantic.semanticAnalysis(prog) match {
         case Right(_) => "success"

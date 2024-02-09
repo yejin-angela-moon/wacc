@@ -5,6 +5,17 @@ import ast.Ident
 import ast.Type
 
 
+//NEED get the file, find the corresponding code, get the line, get the index of the line
+
+object Errors {
+
+  var currentFilename: String = ""
+
+  def setCurrentFilename(filename: String): Unit = {
+    currentFilename = filename
+  }
+
+
 trait Error {   
   val errorType : String
 
@@ -24,7 +35,7 @@ trait Error {
 
   def printErrorMessage() = {
      // println("Errors detected during compilation! Exit code " + exitStatus + " returned.")
-      println(errorType + " in line x")// in (" + startLine + ", " + endLine + ")")
+      println(s"$errorType in $currentFilename line x")// in (" + startLine + ", " + endLine + ")")
       println("  " + log)
     
   }
@@ -145,7 +156,7 @@ class SemanticError() extends Error {
     override val log = "Attempt to free non-dynamically allocated memory"
   }
 
-
+}
 
 
 

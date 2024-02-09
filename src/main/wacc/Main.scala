@@ -6,6 +6,7 @@ import scala.io.Source
 import lexer._
 import parser._
 import Semantic._
+import Errors._
 
 object Main {
     def main(args: Array[String]): Unit = {
