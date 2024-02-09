@@ -7,12 +7,12 @@ import java.io._
 import scala.util._
 
 class ValidSemantic extends AnyFunSuite {
-  import TestSemantics.testSemantics
-  val validDir = new File("valid/")
+    import TestSemantics.testSemantics
+    val validDir = new File("valid/")
 
-  assert(validDir.isDirectory)
+    assert(validDir.isDirectory)
 
-  val subDirs = validDir.listFiles()
+    val subDirs = validDir.listFiles()
 
   for(subDir <- subDirs) {
     println ("Cheking valid files in \"" + subDir.getPath().substring("valid/".length()) + "\"") 
@@ -37,9 +37,10 @@ class ValidSemantic extends AnyFunSuite {
           
       }
 
+            }
+        }
     }
-  }
-}
+
 
   }
 }

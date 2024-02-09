@@ -104,6 +104,7 @@ object Semantic {
         prog match {
             case Declare(t, ident, rvalue) =>
                 var scopeVar = s"${ident.x}$scopeLevel"
+                // var scopeVar = s"${ident.x}$scopeLevel"
 
                 symbolTable.get(scopeVar) match {
                     case Some(_) => 
@@ -227,6 +228,8 @@ object Semantic {
                 case Left(errors) => Left(errors)
             }
             case Free(x) => findType(x, scopeLevel) match {
+                case Right(ArrayType(_)) => Right(())
+                case Right(PairType(_,_)) => Right(())
                 case Right(ArrayType(_)) => Right(())
                 case Right(PairType(_,_)) => Right(())
                 case Left(errors) => Left(errors)
@@ -465,9 +468,9 @@ object TypeCheck {
             case BoolLit(x) => Right(BoolType)
             case CharLit(x) => Right(CharType)
             case StrLit(x) => Right(StringType)
-            case Ident(x) if (scopeLevel.charAt(scopeLevel.length() - 1) != 'g') => 
+            case Ident(x) if (!scopeLevel.endsWith("-g")) => 
                 println(s"Looking for parameter $x at scope level $scopeLevel, function ${scopeLevel.substring(1, 1)}")
-                findParamType(scopeLevel.substring(1), x)
+                findParamType(scopeLevel.stripPrefix("-"), x)
             case Ident(x) => getValueFromTable(x + scopeLevel)
             case ArrayElem(ident, exprList) =>
                 getValueFromTable(ident.x + scopeLevel).flatMap {
