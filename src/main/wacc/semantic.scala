@@ -284,7 +284,6 @@ object Semantic {
         }
     }
 
-
     def toPairElemType(t: Type): PairElemType = t match {
         case PairElemType1 => PairElemType1
         case _ => PairElemType2(t)
@@ -414,7 +413,7 @@ object TypeCheck {
             case head :: tail =>
                 val headTypeResult = findType(head, scopeLevel, pos)
                 headTypeResult.flatMap { headType =>
-                    // Check each element in the tail has the same type as the head
+                    /* Check each element in the tail has the same type as the head */
                     val allMatch = tail.forall { expr =>
                         findType(expr, scopeLevel, pos) match {
                             case Right(t) => typeMatch(t, headType)
@@ -428,11 +427,11 @@ object TypeCheck {
         }
     }
 
-
     val everyType: Set[Type] = Set(PairType(AnyType, AnyType), ArrayType(AnyType), IntType, BoolType, CharType, StringType)
+    /* The set of types which are allowed for size comparision. */
     val comparisonOpType: Set[Type] = Set(IntType, CharType)
-    // val everyArrayType: Set[Type] = Set()
 
+    /* Find the type of any expression. */
     def findType(expr : Expr, scopeLevel : String, pos: (Int, Int)) : Either[List[SemanticError], Type] = {
         expr match {
             case Add(x, y) => checkBinaryOp(x, y, Set(IntType), IntType, scopeLevel, pos)
@@ -480,7 +479,6 @@ object TypeCheck {
                                     otherTypes + otherType
                                     false
                             }
-
                             if (allIndicesAreInt) {
                                 Right(t) // Return the type of the array element
                             } else {
@@ -489,7 +487,6 @@ object TypeCheck {
                     }
                 case _ => Left(List(ArrayTypeError(ident.x, pos)))
                 }
-            case Paran(x) => findType(x, scopeLevel, pos)
             case PairLit => Right(NullType)
         }
     }
@@ -501,6 +498,7 @@ object TypeCheck {
         }
     }
 
+    /* Check if two expressions have the same type. */
     def checkTypes(e1: Expr, e2: Expr, scopeLevel: String, pos: (Int, Int)) : Boolean = {
         (findType(e1, scopeLevel, pos), findType(e2, scopeLevel, pos)) match {
             case (Right(t1), Right(t2)) => typeMatch(t1, t2)
@@ -508,6 +506,9 @@ object TypeCheck {
         }
     }
 
+    /* Compare two types and return true if they are equal. 
+       For array types, their element types must also be equal.
+       String and array of characters are considered equal. */
     def typeMatch(t1: Type, t2: Type) : Boolean = {
         (t1, t2) match {
             case (ArrayType(a), ArrayType(b)) => typeMatch(a, b)

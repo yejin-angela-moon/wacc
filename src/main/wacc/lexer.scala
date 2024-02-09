@@ -7,7 +7,6 @@ import parsley.token.descriptions._
 import parsley.token.predicate.{Unicode, Basic}
 import parsley.combinator.option
 import parsley.character.{digit, string}
-
 import parsley.character.newline
 
 object lexer{

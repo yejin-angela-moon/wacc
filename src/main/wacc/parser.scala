@@ -1,6 +1,7 @@
 package wacc
 
 import parsley.{Parsley, Result}
+import parsley.{Success, Failure}
 import parsley.expr.chain
 import parsley.Parsley.{atomic, many, some, notFollowedBy}
 import parsley.combinator.{sepBy, sepBy1, countSome, manyN}
@@ -23,7 +24,6 @@ object ExpressionParser {
         ⟨atom⟩ ::= ⟨int-liter⟩ | ⟨bool-liter⟩ | ⟨char-liter⟩ | ⟨str-liter⟩ | ⟨pair-liter⟩
                 | ⟨ident⟩ | ⟨array-elem⟩ | ‘(’ ⟨expr⟩ ‘)’
     */
-
     lazy val `<int-liter>` = IntLit(INTEGER)
     lazy val `<bool-liter>` = BoolLit(BOOL)
     lazy val `<char-liter>` = CharLit(CHAR)
