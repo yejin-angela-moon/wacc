@@ -4,10 +4,16 @@ stages:
 - build
 - test
 
+before_script:
+  - sudo apt update && sudo apt install -y curl
+  - curl -fLo cs https://github.com/VirtusLab/scala-cli/releases/latest/download/cs-x86_64-pc-linux
+  - sudo chmod +x cs
+  - sudo mv cs /usr/local/bin/scala-cli
+  - scala-cli setup
+
 build-job:
   stage: build
   script:
-    - curl -sSLf https://scala-cli.virtuslab.org/get | sh
     - scala-cli --power package . --server=false --jvm system --force -o wacc-compiler
 
 test-job:
