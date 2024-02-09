@@ -6,6 +6,8 @@ stages:
 
 before_script:
   - apt-get update -y && apt-get install -y curl
+  - apt-get install -y openjdk-11-jdk
+  - java -version
   - curl -sSLf https://scala-cli.virtuslab.org/get | sh
   - source ~/.profile
 
