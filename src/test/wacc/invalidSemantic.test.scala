@@ -46,8 +46,9 @@ object TestSemantics {
       case Success(prog) => Semantic.semanticAnalysis(prog) match {
         case Right(_) => "success"
         case Left(value) => {
-          for(SemanticError(msg) <- value) 
-            println(msg)
+          println("Error detected during compilation! Exit code 200 returned.")
+          for(semanticError <- value) 
+            semanticError.printErrorMessage()
           return "failure"
         }
       }

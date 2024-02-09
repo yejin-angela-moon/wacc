@@ -21,8 +21,8 @@ object Main {
                         case Right(_) => 
                             println(s"$prog is semantically valid")
                         case Left(list) => {
-                            for(SemanticError(msg) <- list)
-                                println("Error: " + msg)
+                            for(semanticError <- list)
+                                semanticError.printErrorMessage()
                             System.exit(200)
 
                         }

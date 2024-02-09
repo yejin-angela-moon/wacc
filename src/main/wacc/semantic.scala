@@ -4,7 +4,7 @@ import scala.collection.mutable.{HashMap}
 import parsley.{Result, Success, Failure}
 import ast._
 // import java.lang.foreign.MemorySegment.Scope
-import SemanticError._
+import Error._
 import Semantic._
 import TypeCheck._
 
@@ -21,7 +21,7 @@ object Semantic {
                 case -1 => "" // No more scopes to backtrack
                 case index => scopeVar.substring(0, index)
                 }
-                if (nextScopeVar.isEmpty) Left(List(SemanticError(s"Unexpected identifier $key")))
+                if (nextScopeVar.isEmpty) Left(List(UndeclaredIdentifierError(key)))
                 else search(nextScopeVar)
             }
         }
@@ -40,7 +40,7 @@ object Semantic {
 
                 symbolTable.get(scopeVarible) match {
                     case Some(_) => 
-                        Left(List(SemanticError(s"Variable ${ident.x} already declared.")))
+                        Left(List(RedeclaredVariableError(ident.x)))
 
                     case None =>
                         checkRvalue(rvalue, scopeLevel) match {
@@ -52,9 +52,9 @@ object Semantic {
                                         symbolTable.addOne(scopeVarible -> t)
                                     Right(())}
                                 else if (value :> t)
-                                    Left(List(SemanticError(s"Tried assigning stronger $value value to weaker $t")))
+                                    Left(List(CastingError(value,t)))
                                 else
-                                    Left(List(SemanticError(s"Declare type mismatch\nExpected: $t Actual: $value")))
+                                    Left(List(TypeError("Declare", Set(t), value)))
                             }
 
 
@@ -69,7 +69,7 @@ object Semantic {
                 (lResult, rResult) match {
                     case (Right(t1), Right(t2)) =>
                     if (t1 :> t2) Right(())
-                    else Left(List(SemanticError(s"Type mismatch\n$t1 and \n$t2")))
+                    else Left(List(TypeError("Assign", Set(t1), t2)))
 
                     case (Left(errors1), Left(errors2)) =>
                     Left(errors1 ++ errors2)
@@ -87,7 +87,7 @@ object Semantic {
                         Left(error)
 
                     case Right(t) if t != BoolType =>
-                        Left(List(SemanticError("Condition in IfThenElse must be of type Boolean.")))
+                        Left(List(TypeError("Condition", Set(BoolType), t)))
 
                     case Right(_) =>
 
@@ -109,7 +109,7 @@ object Semantic {
                         Left(error)
 
                     case Right(t) if t != BoolType =>
-                        Left((List(SemanticError("Type mismatch\nExpected: Boolean Actual: " + t))))
+                        Left((List(TypeError("Condition", Set(BoolType), t))))
 
                     case Right(_) =>
                         stmtCheck(s, scopeLevel + "-w")
@@ -131,19 +131,19 @@ object Semantic {
             case Skip => Right(())
             case Read(lvalue) => checkLvalue(lvalue, scopeLevel) match {
                 case Right(t) if t == IntType || t == CharType || t == NullType => Right(())
-                case Right(_) => Left(List(SemanticError("Read expects an Int or Char type")))
+                case Right(badType) => Left(List(TypeError("Read", Set(IntType, CharType), badType)))
                 case Left(value) => Left(value)
             }
             case Return(x) => (findType(x, scopeLevel), getCurrentFunctionReturnType(scopeLevel)) match {
                 case (Right(t1), Right(t2)) if t2 :> t1 => Right(())
-                case (Right(t1), Right(t2)) => Left(List(SemanticError(s"Return type mismatch\nExpected: $t2 Actual: $t1")))
+                case (Right(t1), Right(t2)) => Left(List(TypeError("Return", Set(t2), t1)))
                 case (Left(e1), Left(e2)) => Left(e1 ++ e2)
                 case (_, Left(e)) => Left(e)
                 case (Left(e), _) => Left(e)
             }
             case Exit(x) => findType(x, scopeLevel) match {
                 case Right(IntType) => Right(())
-                case Right(_) => Left(List(SemanticError("Exit expects an Int type")))
+                case Right(badType) => Left(List(TypeError("Exit", Set(IntType), badType)))
                 case Left(errors) => Left(errors)
             }
             case Print(x) => findType(x, scopeLevel) match {
@@ -158,7 +158,7 @@ object Semantic {
             case Free(x) => findType(x, scopeLevel) match {
                 case Right(ArrayType(_)) | Right(PairType(_,_)) | Right(NullType) => Right(()) 
                 case Left(errors) => Left(errors)
-                case Right(_) => Left(List(SemanticError("Attempt to free non-dynamically allocated memory")))
+                case Right(_) => Left(List(FreeingError()))
             }
 
         }
@@ -173,14 +173,16 @@ object Semantic {
             case Fst(lvalue) => checkLvalue(lvalue, scopeLevel) match {
                 case Right(PairType(a, b)) => Right(fromPairElemType(a))
                 case Right(NullType) => Right(NullType)
-                case _ => Left(List(SemanticError("Can only use fst on pair type"))) 
+                case _ => Left(List(IllegalUsedFunctionOnNonPairTypeError("fst")))
+              //  case error => error 
             }
             case Snd(lvalue) => checkLvalue(lvalue, scopeLevel) match {
                 case Right(PairType(a, b)) => 
                     print("the value of b is " + b)
                     Right(fromPairElemType(b))
                 case Right(NullType) => Right(NullType)
-                case _ => Left(List(SemanticError("Can only use snd on pair type"))) 
+                case _ => Left(List(IllegalUsedFunctionOnNonPairTypeError("snd")))
+               // case error => error 
             }
             }
         }
@@ -208,12 +210,12 @@ object Semantic {
                 case a => 
                     println(a)
                     println(symbolTable)
-                    Left(List(SemanticError("Can only use fst on pair type"))) 
+                    Left(List(IllegalUsedFunctionOnNonPairTypeError("fst"))) 
             }
             case Snd(lvalue) => checkLvalue(lvalue, scopeLevel) match {
                 case Right(PairType(a, b)) => Right(fromPairElemType(b))
                 case Right(NullType) => Right(NullType)
-                case _ => Left(List(SemanticError("Can only use snd on pair type"))) 
+                case _ => Left(List(IllegalUsedFunctionOnNonPairTypeError("snd"))) 
             }
             case e => findType(e.asInstanceOf[Expr], scopeLevel)
         }
@@ -233,7 +235,7 @@ object Semantic {
     def checkFuncsList(funcs: List[Func]): Either[List[SemanticError], Unit] = {
         funcs.foreach(f =>
             symbolTable.get(f.ident.x) match {
-                case Some(value) => Left(List(SemanticError(s"Function redefinition error: illegal redefinition of function ${f.ident.x}")))
+                case Some(value) => Left(List(RedefinedFunctionError(f.ident.x)))
                 case None => symbolTable.addOne(f.ident.x -> f.t)
             }
         )
@@ -256,18 +258,19 @@ object Semantic {
     def getCurrentFunctionReturnType(scopeLevel: String): Either[List[SemanticError], Type] = {
         val getFunctionName = scopeLevel.split("-")
         (getFunctionName.lengthCompare(1) < 0) match {
-            case true => Left(List(SemanticError("return from main is not allowed")))
+            case true => Left(List(ScopeError("main")))
             case false => symbolTable.get(getFunctionName(1)) match {
                 case Some(returnType) => Right(returnType)
-                case None => Left(List(SemanticError("return outside of function is not allowed")))
+                case None => Left(List(ScopeError("outside of function")))
             }
         }
 
     }
 
 
-    def semanticAnalysis(prog: Stmt) : Either[List[SemanticError], Unit] = {
+    def semanticAnalysis(prog: Stmt) : Either[List[Error], Unit] = {
         symbolTable.clear()
+        val lineNumber = 0
 
         prog match {
             case Program(funcs, body) =>
@@ -276,8 +279,8 @@ object Semantic {
                     case (Left(err1), Left(err2)) => Left(err1 ++ err2)
                     case (Left(errs), _) => Left(errs)
                     case (_, Left(errs)) => Left(errs)
-                }
-            case _ => Left(List(SemanticError("Program expected")))
+                } 
+            case _ => Left(List(SyntaxError("Program expected"))) //TOCHECK: which kind of error
         }
     }
 }
@@ -293,14 +296,14 @@ object TypeCheck {
                         if(expectedType.filter((x) => x :> t1).size >= 1)
                             return Right(expectedOutputType)
 
-                        return Left(List(SemanticError("BinOp type mismatch\nExpected: " + expectedType + " Actual: " + t1)))
+                        return Left(List(TypeError("BinOp", expectedType, t1)))
                     }
-                    return Left(List(SemanticError("BinOp differnt types: " + t1 + " and " + t2)))
+                    return Left(List(TypeDifferentError("BinOp type differnt ", Set(t1, t2))))
                 }
             case (Left(a), Left(b)) => Left(a ++ b)
             case (Left(err), _) => Left(err)
             case (_, Left(err)) => Left(err) 
-            case _ => Left(List(SemanticError("UNDEFINED")))
+            case _ => Left(List(UndefinedError()))
             }
         }
 
@@ -313,7 +316,7 @@ object TypeCheck {
                 case PairType(p1, p2) => Right(PairType(p1, p2))
                 case _ if expectedType.filter((x) => x :> t1).size >= 1 =>
                     Right(expectedOutputType)
-                case _ => Left(List(SemanticError("Type mismatch for unary operation")))
+                case badType => Left(List(TypeError("Unary operation", expectedType, badType)))
             }
             case Left(err) => Left(err)
         }
@@ -334,7 +337,7 @@ object TypeCheck {
                     }
                     // If all match, return ArrayType of the head's type, else return an error
                     if (allMatch) Right(ArrayType(headType))
-                    else Left(List(SemanticError("Array elements must be of the same type.")))
+                    else Left(List(MultipleTypesInArrayError()))
                 }
         }
     }
@@ -381,7 +384,7 @@ object TypeCheck {
                         } else {
                             // Ensure all index types are IntType
                             if (arrayDepth < indexTypeChecks.length)
-                                return Left(List(SemanticError(s"Unexpected at least ${indexTypeChecks.length}-dimensional array")))
+                                return Left(List(ArrayDimensionalError(indexTypeChecks.length)))
 
 
                             val allIndicesAreInt = indexTypeChecks.forall {
@@ -392,10 +395,10 @@ object TypeCheck {
                             if (allIndicesAreInt) {
                                 Right(t) // Return the type of the array element
                             } else {
-                                Left(List(SemanticError("Array indices must be integers")))
+                                Left(List(ArrayIndiceError()))
                             }
                     }
-                case _ => Left(List(SemanticError(s"${ident.x} is not an array type")))
+                case _ => Left(List(ArrayTypeError(ident.x)))
                 }
             case Paran(x) => findType(x, scopeLevel)
             case PairLit => Right(NullType)
