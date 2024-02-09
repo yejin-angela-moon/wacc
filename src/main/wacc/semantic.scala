@@ -20,10 +20,14 @@ object Semantic {
        Stores function return type and parameters */
     case class FuncInfo(t: Type, params: ParamList)
 
-    /* Get the Type of a stored variable from the symbol table */
     def getValueFromTable(key: String, pos: (Int, Int)): Either[List[SemanticError], Type] = {
         /* Helper function to search through the symbol table using the key */
         def search(scopeVar: String): Either[List[SemanticError], Type] = {
+            /* Starting from global ("-g"), gradually go up the scopes if variable is not found.
+                If not declared in a function, a variable "x" is stored as "x-g-..." with the scope 
+                levels split by dashes. Going up a scope is done by removing the last scope level
+                each time. Variables declared in a function has the function name instead of 
+                "-g" directly behind its name. */
             symbolTable.get(scopeVar) match {
             case Some(value) => Right(value)
             case None =>
@@ -86,17 +90,15 @@ object Semantic {
 
                     case (Left(errors1), Left(errors2)) =>
                     Left(errors1 ++ errors2)
-
                     case (Left(errors), Right(_)) =>
                     Left(errors)
-
                     case (Right(_), Left(errors)) =>
                     Left(errors)
                 }
 
             /* Check if the type of the lvalue and rvalue match */
-            case IfThenElse(x, s1, s2) =>
-                findType(x, scopeLevel, prog.pos) match {
+            case IfThenElse(cond, s1, s2) =>
+                findType(cond, scopeLevel, prog.pos) match {
                     case Left(error) =>
                         Left(error)
 
@@ -116,9 +118,9 @@ object Semantic {
                     }
                 }
 
-            /* Check if the type of the cond is a bool, then check the statement body */
-            case WhileDo(x, s) =>
-                findType(x, scopeLevel, prog.pos) match {
+            /* Check if the type of the condition is boolean, then check the statement body */
+            case WhileDo(cond, s) =>
+                findType(cond, scopeLevel, prog.pos) match {
                     case Left(error) =>
                         Left(error)
 
@@ -167,21 +169,21 @@ object Semantic {
             }
 
             /* Check if the expression evaluates to an integer. */
-            case Exit(x) => findType(x, scopeLevel, prog.pos) match {
+            case Exit(expr) => findType(expr, scopeLevel, prog.pos) match {
                 case Right(IntType) => Right(())
                 case Right(badType) => Left(List(TypeError("Exit", Set(IntType), Set(badType), prog.pos)))
                 case Left(errors) => Left(errors)
             }
 
             /* Check that the expression can be computed */
-            case Print(x) => findType(x, scopeLevel, prog.pos) match {
+            case Print(expr) => findType(expr, scopeLevel, prog.pos) match {
                 case Right(_) => Right(())
                 case Left(errors) => Left(errors)
             }
 
             /* Check the statement of the body */
-            case Println(x) =>
-                findType(x, scopeLevel, prog.pos) match {
+            case Println(expr) =>
+                findType(expr, scopeLevel, prog.pos) match {
                 case Right(_) => Right(())
                 case Left(errors) => Left(errors)
             }
@@ -233,10 +235,10 @@ object Semantic {
 
             /* Check that the function is already defined, and the argument list matches the parameter list, in
                terms of the number of types. Invalid otherwise. */
-            case Call(ident, x) => 
+            case Call(ident, as) => 
                 functionTable.get(ident.x) match {
                     case Some(FuncInfo(t, ps)) =>
-                        matchArgListWithParamList(x, ps, scopeLevel, pos) match {
+                        matchArgListWithParamList(as, ps, scopeLevel, pos) match {
                             case Right(_) => Right(t)
                             case Left(value) => Left(value)
                         }
@@ -284,11 +286,12 @@ object Semantic {
         }
     }
 
+
+    /* Helper functions to convert a type to or from a pairElemType when checking Rvalue. */
     def toPairElemType(t: Type): PairElemType = t match {
         case PairElemType1 => PairElemType1
         case _ => PairElemType2(t)
     }
-
     def fromPairElemType(t: PairElemType) : Type = t match {
         case PairElemType2(a) => a
         case PairElemType1    => PairElemType1
@@ -456,7 +459,7 @@ object TypeCheck {
             case BoolLit(x) => Right(BoolType)
             case CharLit(x) => Right(CharType)
             case StrLit(x) => Right(StringType)
-            case Ident(x) => getValueFromTable(x + scopeLevel, pos)
+            case Ident(x) => getValueFromTable(x + scopeLevel, pos) // Look up the symbol table in case of an identity
             case ArrayElem(ident, exprList) =>
                 getValueFromTable(ident.x + scopeLevel, pos).flatMap {
                     case ArrayType(t) =>
@@ -485,6 +488,7 @@ object TypeCheck {
                                 Left(List(TypeError("Array indices", Set(IntType), otherTypes, pos)))
                             }
                     }
+                /* If expression is not among these types, return an error. */
                 case _ => Left(List(ArrayTypeError(ident.x, pos)))
                 }
             case PairLit => Right(NullType)

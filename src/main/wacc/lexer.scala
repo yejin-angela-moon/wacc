@@ -18,10 +18,12 @@ object lexer{
             identifierLetter = Basic(c => Character.isLetterOrDigit(c) || c == '_'),
         ),
         SymbolDesc.plain.copy(
+            /* Keywords for statements and expressions, types. */
             hardKeywords = Set("if", "then", "else","fi", "skip", "read", "free",
                             "return", "exit", "print", "println", "while", "do", "done", "begin",
                             "end", "is", "true", "false", "int", "bool", "char", "string","newpair",
                             "fst", "snd", "call", "null"),
+            /* Keywords for binary and unary operators. */
             hardOperators = Set("$", "||", "&&", "<", "<=", ">", ">=", "==", "!=", "/",
                             "+", "-", "*", "%", "=", "!"),
         ),
