@@ -1,11 +1,23 @@
 package wacc
 
+import parsley.{Parsley, Result}
+import parsley.Success
+import java.security.Identity
+import scala.collection.View.Empty
+import java.security.cert.TrustAnchor
+
 object ast {
     import parsley.generic._
+    import Semantic.getValueFromTable
+    import ast._
 
-    sealed trait Expr extends Rvalue
+    sealed trait Expr extends Rvalue with Lvalue 
 
-    //Binary Operator
+    /*
+        Binary Operator
+        ⟨binary-oper⟩ ::= ‘*’ | ‘/’ | ‘%’ | ‘+’ | ‘-’ | ‘>’ | ‘>=’ | ‘<’ | ‘<=’
+                        | ‘==’ | ‘!=’ | ‘&&’ | ‘||’
+    */
     case class Add(x: Expr, y: Expr) extends Expr
     case class Sub(x: Expr, y: Expr) extends Expr
     case class Mul(x: Expr, y: Expr) extends Expr
@@ -14,20 +26,25 @@ object ast {
     case class And(x: Expr, y: Expr) extends Expr
     case class Or(x: Expr, y: Expr) extends Expr
     case class LT(x: Expr, y: Expr) extends Expr
-    case class LTE(x: Expr, y: Expr) extends Expr    
+    case class LTE(x: Expr, y: Expr) extends Expr
     case class GT(x: Expr, y: Expr) extends Expr
     case class GTE(x: Expr, y: Expr) extends Expr
     case class E(x: Expr, y: Expr) extends Expr
     case class NE(x: Expr, y: Expr) extends Expr
 
-    //Unary Operator
+    /*
+        Unary Operator
+        ⟨unary-oper⟩ ::= ‘!’ | ‘-’ | ‘len’ | ‘ord’ | ‘chr’
+    */
     case class Not(x: Expr) extends Expr
     case class Neg(x: Expr) extends Expr
     case class Len(x: Expr) extends Expr
     case class Ord(x: Expr) extends Expr
     case class Chr(x: Expr) extends Expr
 
-    //Atom
+    /*
+        Atom
+    */
     case class IntLit(x: BigInt) extends Expr
     case class BoolLit(x: Boolean) extends Expr
     case class CharLit(x: Char) extends Expr
@@ -35,76 +52,157 @@ object ast {
     case class Ident(x: String) extends Expr with Lvalue
     case class ArrayElem(ident: Ident, x: List[Expr]) extends Expr with Lvalue
     case class Paran(x: Expr) extends Expr
-
-    // sealed trait PairLit extends Expr 
-    // case class Null() extends PairLit with ParserBridge0[PairLit]
-
     case object PairLit extends Expr with ParserBridge0[Expr]
 
-    //Program
-    case class Program(funcs: List[Func], body: Stmt) extends Stmt
+    /* Program */
+    case class Program(funcs: List[Func], body: Stmt) extends Stmt {
 
-    //Function
-    case class Func(t: Type, ident: Ident, list: ParamList, body: Stmt)
-    
-    //Parameter List
-    case class ParamList(params: List[Param]) 
-    
-    //Parameter
-    case class Param(t: Type, ident: Ident) 
-    
-    sealed trait Stmt
-    //Statements
-    case object Skip extends Stmt with ParserBridge0[Stmt]
-    case class Declare(t: Type, ident: Ident, rvalue: Rvalue) extends Stmt
-    case class Assign(lvalue: Lvalue, rvalue: Rvalue) extends Stmt
-    case class Read(lvalue: Lvalue) extends Stmt
-    case class Free(x: Expr) extends Stmt
-    case class Return(x: Expr) extends Stmt
-    case class Exit(x: Expr) extends Stmt
-    case class Print(x: Expr) extends Stmt
-    case class Println(x: Expr) extends Stmt
-    case class IfThenElse(x: Expr, s1: Stmt, s2: Stmt) extends Stmt
-    case class WhileDo(x: Expr, s:Stmt) extends Stmt
-    case class BeginEnd(s: Stmt) extends Stmt
-    case class StmtList(s1: Stmt, s2: Stmt) extends Stmt    
+      override val pos: (Int, Int) = (-1, -1)
 
+    }
 
-    //Lvalue
+    /* Function */
+    case class Func(t: Type, ident: Ident, list: ParamList, body: Stmt) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+
+    /* Parameter List */
+    case class ParamList(params: List[Param])
+
+    /* Parameter */
+    case class Param(t: Type, ident: Ident)
+
+    /* Statement */
+    /* Statement */
+    sealed trait Stmt {
+        val pos: (Int, Int)
+    }
+    case object Skip extends Stmt with ParserBridge0[Stmt] {
+        val pos: (Int, Int) = (-1, -1)
+    }
+    case class Declare(t: Type, ident: Ident, rvalue: Rvalue) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class Assign(lvalue: Lvalue, rvalue: Rvalue) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class Read(lvalue: Lvalue) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class Free(x: Expr) extends Stmt {
+      override val pos: (Int, Int) = (-1, -1)
+    }
+    case class Return(x: Expr) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class Exit(x: Expr) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class Print(x: Expr) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class Println(x: Expr) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class IfThenElse(x: Expr, s1: Stmt, s2: Stmt) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class WhileDo(x: Expr, s:Stmt) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class BeginEnd(s: Stmt) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class StmtList(s1: Stmt, s2: Stmt) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+
+    /* Lvalue */
     sealed trait Lvalue
 
-    //Rvalue
+    /* Rvalue */
     sealed trait Rvalue
     case class ArrayLit(x: Option[List[Expr]]) extends Rvalue
     case class NewPair(x1: Expr, x2: Expr) extends Rvalue
     case class Call(i: Ident, x: Option[ArgList]) extends Rvalue
 
-    //Pair Elem
+    /* Pair Elem */
     sealed trait PairElem extends Lvalue with Rvalue
     case class Fst(x: Lvalue) extends PairElem
     case class Snd(x: Lvalue) extends PairElem
 
-    //Arg List 
+    /* Arguement List */
     case class ArgList(x: List[Expr])
 
-    //Array 
-
-    //Type
+    /* Type */
     sealed trait Type
-    sealed trait BaseType extends Type with PairElemType
 
-    case class ArrayType(t: Type) extends Type with PairElemType
+    case object NullType extends Type
+
+    /* Pair Type */
     case class PairType(p1: PairElemType, p2: PairElemType) extends Type
 
-    sealed trait PairElemType 
-    case object PairElemType1 extends PairElemType with ParserBridge0[PairElemType] 
-    case class  PairElemType2(t: Type) extends PairElemType 
-    
+    /* Pair Elem Type */
+    sealed trait PairElemType extends Type
+    case object PairElemType1 extends PairElemType with ParserBridge0[PairElemType]
+    case class  PairElemType2(t: Type) extends PairElemType
+    case class ArrayType(t: Type) extends Type with PairElemType
 
+    /* Base Type */
+    sealed trait BaseType extends Type with PairElemType
     case object IntType extends BaseType with ParserBridge0[BaseType]
     case object BoolType extends BaseType with ParserBridge0[BaseType]
     case object CharType extends BaseType with ParserBridge0[BaseType]
     case object StringType extends BaseType with ParserBridge0[BaseType]
+
+    /* Any-Type */
+    case object AnyType extends Type with PairElemType
+
+    implicit class TypeBinOp(t: Type) {
+        def :>(that: Type) : Boolean = (t, that) match {
+            case (AnyType, _) => true
+            case (NullType, NullType) => false
+            case (NullType, AnyType) => false
+            case (x, AnyType | NullType) => true
+
+            case (NullType, x : PairType) => true
+            case (NullType, x : PairElemType) => true
+            case (StringType, ArrayType(CharType)) => true
+
+            case (PairElemType1, PairType(_, _)) | (PairType(_, _), PairElemType1) => true
+            case (PairElemType1, PairElemType2(_)) | (PairElemType2(_), PairElemType1) => true
+
+            case (PairElemType2(a), PairElemType2(b)) => a:>b 
+            case (ArrayType(StringType), ArrayType(ArrayType(CharType))) => false
+            case (ArrayType(t1), ArrayType(t2)) => t1:>t2 && t2 :>t1
+            case (PairType(p1, p2),PairType(t1, t2)) => p1:>t1 && p2:>t2  && t1:>p1 && t2:>p2
+            case (a, b) => a == b
+        }
+    }
 
     object Div extends ParserBridge2[Expr, Expr, Expr]
     object Mod extends ParserBridge2[Expr, Expr, Expr]
@@ -161,8 +259,13 @@ object ast {
 
     object ArrayType extends ParserBridge1[Type, ArrayType]
     object PairElemType2 extends PairElemType with ParserBridge1[Type, PairElemType]
-    // object IntType extends ParserBridge0[BigInt, IntType]
-    // object BoolType extends ParserBridge1[Boolean, BoolType]
-    // object CharType extends ParserBridge1[Char, CharType]
-    // object StringType extends ParserBridge1[String, StringType]
+
+    /* Ident Or Array Elem */
+    object IdentOrArrayElem extends ParserBridge2[Ident, List[Expr], Expr]
+    {
+        def apply(ident: Ident, args: List[Expr]) = args match {
+            case Nil => ident
+            case args => ArrayElem(ident, args)
+        }
+    }
 }
