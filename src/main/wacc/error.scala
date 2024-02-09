@@ -80,7 +80,7 @@ trait SemanticError extends Error {
 
 
   case class TypeError(description: String, expected: Set[Type], found: Set[Type], pos: (Int, Int)) extends SemanticError {
-    override val errorType = "Type Error"
+    override val errorType = "[Semantic] Type Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
     val expectedTypes = expected.mkString(" | ") 
@@ -89,7 +89,7 @@ trait SemanticError extends Error {
   }
 
   case class TypeDifferentError(description: String, types: Set[Type], pos: (Int, Int)) extends SemanticError {
-    override val errorType = "Type Difference Error"
+    override val errorType = "[Semantic] Type Difference Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
     val getType = types.mkString(" , ") 
@@ -97,21 +97,21 @@ trait SemanticError extends Error {
   }
 
   case class UndefinedFunctionError(ident: Ident, pos: (Int, Int)) extends SemanticError {
-    override val errorType = "Undefined Function Error"
+    override val errorType = "[Semantic] Undefined Function Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
     override val log = s"The function ${ident.x} is undefined"
   }
 
   case class UndeclaredIdentifierError(ident: String, pos: (Int, Int)) extends SemanticError {
-    override val errorType = "Undeclared Identifier Error"
+    override val errorType = "[Semantic] Undeclared Identifier Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
     override val log = s"The identifier $ident is undeclared"
   }
 
   case class RedefinedFunctionError(func: String, pos: (Int, Int)) extends SemanticError {
-    override val errorType = "Redefined Function Error"
+    override val errorType = "[Semantic] Redefined Function Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
     override val log = s"Illegal redefinition of function $func"
@@ -119,14 +119,14 @@ trait SemanticError extends Error {
 
   case class RedeclaredVariableError(variable: String, pos: (Int, Int))  extends SemanticError {
 
-    override val errorType = "Redeclared Variable Error"
+    override val errorType = "[Semantic] Redeclared Variable Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
     override val log = s"Illegal redefinition of variable $variable"
   }
 
   case class IllegalUsedFunctionOnNonPairTypeError(func: String, pos: (Int, Int)) extends SemanticError {
-    override val errorType = "Illegal Use of Function On Non-PairType Error"
+    override val errorType = "[Semantic] Illegal Use of Function On Non-PairType Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
    // override val log = s"Illgal use of $func on $applyOn, can only be used on PairType"
@@ -135,7 +135,7 @@ trait SemanticError extends Error {
 
  
   case class NumOfArgumentsError(ident: Ident, expected: Int, found: Int, pos: (Int, Int)) extends SemanticError {
-    override val errorType = "Number Of Arguments Error"
+    override val errorType = "[Semantic] Number Of Arguments Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
     override val log =  s"Incorrect number of arguments in call to ${ident.x}\n  Expected: $expected\n  Found: $found"
@@ -143,35 +143,35 @@ trait SemanticError extends Error {
   }
 
   case class TypeInferenceError(ident: Ident, pos: (Int, Int)) extends SemanticError {
-    override val errorType = "Type Inference Error"
+    override val errorType = "[Semantic] Type Inference Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
     override val log: String = s"Unable to determine the correct type of ${ident.x}"
   }
 
   case class ScopeError(place: String, pos: (Int, Int)) extends SemanticError {
-    override val errorType = "Scope Error"
+    override val errorType = "[Semantic] Scope Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
     override val log = s"Return from $place is not allowed"
   }
 
   case class ArrayOutOfBoundsError(ident: Ident, max: Int, found: Int, pos: (Int, Int)) extends SemanticError {
-    override val errorType = "Array Out Of Bounds Error"
+    override val errorType = "[Semantic] Array Out Of Bounds Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
     override val log =  s"Array ${ident.x} out of bounds\n  Maximum: $max\n  Found: $found"
   }
 
   case class MultipleTypesInArrayError(pos: (Int, Int)) extends SemanticError {
-    override val errorType = "Multiple Types In Array Error"
+    override val errorType = "[Semantic] Multiple Types In Array Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
     override val log = "Array elements must be of the same type"
   }
 
   case class ArrayDimensionalError(length: Int, pos: (Int, Int)) extends SemanticError {
-    override val errorType = "Array Dimensional Error"
+    override val errorType = "[Semantic] Array Dimensional Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
     override val log = s"Unexpected at least $length-dimensional array"
@@ -183,28 +183,28 @@ trait SemanticError extends Error {
   //}
 
   case class ArrayTypeError(ident: String, pos: (Int, Int)) extends SemanticError {
-    override val errorType = "Array Type Error"
+    override val errorType = "[Semantic] Array Type Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
     override val log = s"$ident is not an array type"
   }
 
   case class UndefinedError(pos: (Int, Int)) extends SemanticError {
-    override val errorType = "Undefined Error"
+    override val errorType = "[Semantic] Undefined Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
     override val log = "UNDEFINED"
   }
 
   case class CastingError(strong: Type, weak: Type, pos: (Int, Int)) extends SemanticError {
-    override val errorType = "Casting Error"
+    override val errorType = "[Semantic] Casting Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
     override val log = s"Tried assigning stronger $strong value to weaker $weak"
   }
 
   case class FreeingError(pos: (Int, Int)) extends SemanticError {
-    override val errorType = "Freeing Error"
+    override val errorType = "[Semantic] Freeing Error"
     override val line: Int = pos._1
     override val column: Int = pos._2
     override val log = "Attempt to free non-dynamically allocated memory"
