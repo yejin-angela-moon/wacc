@@ -54,7 +54,7 @@ object Semantic {
                                 else if (value :> t)
                                     Left(List(CastingError(value,t)))
                                 else
-                                    Left(List(TypeError("Declare", Set(t), value)))
+                                    Left(List(TypeError("Declare", Set(t), Set(value))))
                             }
 
 
@@ -69,7 +69,7 @@ object Semantic {
                 (lResult, rResult) match {
                     case (Right(t1), Right(t2)) =>
                     if (t1 :> t2) Right(())
-                    else Left(List(TypeError("Assign", Set(t1), t2)))
+                    else Left(List(TypeError("Assign", Set(t1), Set(t2))))
 
                     case (Left(errors1), Left(errors2)) =>
                     Left(errors1 ++ errors2)
@@ -87,7 +87,7 @@ object Semantic {
                         Left(error)
 
                     case Right(t) if t != BoolType =>
-                        Left(List(TypeError("Condition", Set(BoolType), t)))
+                        Left(List(TypeError("Condition", Set(BoolType), Set(t))))
 
                     case Right(_) =>
 
@@ -109,7 +109,7 @@ object Semantic {
                         Left(error)
 
                     case Right(t) if t != BoolType =>
-                        Left((List(TypeError("Condition", Set(BoolType), t))))
+                        Left((List(TypeError("Condition", Set(BoolType), Set(t)))))
 
                     case Right(_) =>
                         stmtCheck(s, scopeLevel + "-w")
@@ -131,19 +131,19 @@ object Semantic {
             case Skip => Right(())
             case Read(lvalue) => checkLvalue(lvalue, scopeLevel) match {
                 case Right(t) if t == IntType || t == CharType || t == NullType => Right(())
-                case Right(badType) => Left(List(TypeError("Read", Set(IntType, CharType), badType)))
+                case Right(badType) => Left(List(TypeError("Read", Set(IntType, CharType), Set(badType))))
                 case Left(value) => Left(value)
             }
             case Return(x) => (findType(x, scopeLevel), getCurrentFunctionReturnType(scopeLevel)) match {
                 case (Right(t1), Right(t2)) if t2 :> t1 => Right(())
-                case (Right(t1), Right(t2)) => Left(List(TypeError("Return", Set(t2), t1)))
+                case (Right(t1), Right(t2)) => Left(List(TypeError("Return", Set(t2), Set(t1))))
                 case (Left(e1), Left(e2)) => Left(e1 ++ e2)
                 case (_, Left(e)) => Left(e)
                 case (Left(e), _) => Left(e)
             }
             case Exit(x) => findType(x, scopeLevel) match {
                 case Right(IntType) => Right(())
-                case Right(badType) => Left(List(TypeError("Exit", Set(IntType), badType)))
+                case Right(badType) => Left(List(TypeError("Exit", Set(IntType), Set(badType))))
                 case Left(errors) => Left(errors)
             }
             case Print(x) => findType(x, scopeLevel) match {
@@ -296,9 +296,9 @@ object TypeCheck {
                         if(expectedType.filter((x) => x :> t1).size >= 1)
                             return Right(expectedOutputType)
 
-                        return Left(List(TypeError("BinOp", expectedType, t1)))
+                        return Left(List(TypeError("BinOp", expectedType, Set(t1))))
                     }
-                    return Left(List(TypeDifferentError("BinOp type differnt ", Set(t1, t2))))
+                    return Left(List(TypeDifferentError("BinOp", Set(t1, t2))))
                 }
             case (Left(a), Left(b)) => Left(a ++ b)
             case (Left(err), _) => Left(err)
@@ -316,7 +316,7 @@ object TypeCheck {
                 case PairType(p1, p2) => Right(PairType(p1, p2))
                 case _ if expectedType.filter((x) => x :> t1).size >= 1 =>
                     Right(expectedOutputType)
-                case badType => Left(List(TypeError("Unary operation", expectedType, badType)))
+                case badType => Left(List(TypeError("Unary operation", expectedType, Set(badType))))
             }
             case Left(err) => Left(err)
         }
@@ -383,19 +383,22 @@ object TypeCheck {
                             Left(indexErrors)
                         } else {
                             // Ensure all index types are IntType
-                            if (arrayDepth < indexTypeChecks.length)
+                            if (arrayDepth < indexTypeChecks.length) {
                                 return Left(List(ArrayDimensionalError(indexTypeChecks.length)))
+                            }
 
-
+                            val otherTypes = Set[Type]() 
                             val allIndicesAreInt = indexTypeChecks.forall {
                                 case Right(IntType) => true
-                                case _ => false
+                                case Right(otherType) =>
+                                    otherTypes + otherType
+                                    false
                             }
 
                             if (allIndicesAreInt) {
                                 Right(t) // Return the type of the array element
                             } else {
-                                Left(List(ArrayIndiceError()))
+                                Left(List(TypeError("Array indices", Set(IntType), otherTypes)))
                             }
                     }
                 case _ => Left(List(ArrayTypeError(ident.x)))
