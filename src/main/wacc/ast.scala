@@ -6,216 +6,53 @@ import java.security.Identity
 import scala.collection.View.Empty
 import java.security.cert.TrustAnchor
 
-object SemanticManager {
-    import ast._ 
-    def resolve(x: Result[List[Error], Expr], y: Result[List[Error], Expr]) : Result[List[Error], Expr] =
-        (x, y) match {
-            // /* BOTH lower evaluations failed */
-            // case (Failure(a), Failure(b)) => Failure(a ++ b) 
-
-            // /* ONE lower evaluations failed */
-            // case (_, Failure(a)) => Failure(a)              
-            // case (Failure(a), _) => Failure(a)
-
-            // /* Different Types from Wrapper Condiion (i.e. not BoolLit or IntLit) */
-            // case (Success(a), Success(a)) => ??? 
-
-            /* Non-conforming types */                            
-            case (Success(a), _) => ???                                     
-            case (_, Success(a)) => ???
-
-            //TODO (optional): extract types (using .getType() from semantic.scala) for cleaner error message                                                   
-        }
-    def overflow(x: BigInt, y: BigInt, op: (BigInt, BigInt) => BigInt) : Result[List[Error], Expr] = {
-        // if(true /* overflow detected*/)
-        //     return Failure(new RuntimeException("Overflow detected"))
-        
-        return Success(IntLit(op(x,y)))
-    }
-}
-
 object ast {
     import parsley.generic._
-    import SemanticManager._
     import Semantic.getValueFromTable
     import ast._
 
-    sealed trait Expr extends Rvalue with Lvalue {
-        def eval(scope: String) : Result[List[Error], Expr]
-    }
+    sealed trait Expr extends Rvalue with Lvalue 
 
     /*
         Binary Operator
         ⟨binary-oper⟩ ::= ‘*’ | ‘/’ | ‘%’ | ‘+’ | ‘-’ | ‘>’ | ‘>=’ | ‘<’ | ‘<=’
                         | ‘==’ | ‘!=’ | ‘&&’ | ‘||’
     */
-    case class Add(x: Expr, y: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] =
-            (x.eval(scope), y.eval(scope)) match {
-                case (Success(IntLit(a)), Success(IntLit(b))) => overflow(a, b, (x, y) => (x + y))
-                case _ => resolve(x.eval(scope), y.eval(scope))
-            }
-    }
-    case class Sub(x: Expr, y: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            (x.eval(scope), y.eval(scope)) match {
-                case (Success(IntLit(a)), Success(IntLit(b))) => overflow(a, b, (x, y) => (x - y))
-                case _ => resolve(x.eval(scope), y.eval(scope))
-            }
-    }
-    case class Mul(x: Expr, y: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            (x.eval(scope), y.eval(scope)) match {
-                case (Success(IntLit(a)), Success(IntLit(b))) => overflow(a, b, (x, y) => (x * y))
-                case _ => resolve(x.eval(scope), y.eval(scope))
-            }
-    }
-    case class Div(x: Expr, y: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            (x.eval(scope), y.eval(scope)) match {
-                case (Success(IntLit(a)), Success(IntLit(b))) => overflow(a, b, (x, y) => (x / y))
-                case _ => resolve(x.eval(scope), y.eval(scope))
-            }
-    }
-    case class Mod(x: Expr, y: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            (x.eval(scope), y.eval(scope)) match {
-                case (Success(IntLit(a)), Success(IntLit(b))) => overflow(a, b, (x, y) => (x + y))
-                case _ => resolve(x.eval(scope), y.eval(scope))
-            }
-    }
-    case class And(x: Expr, y: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            (x.eval(scope), y.eval(scope)) match {
-                case (Success(BoolLit(a)), Success(BoolLit(b))) => Success(BoolLit(a && b))
-                case _ => resolve(x.eval(scope), y.eval(scope))
-            }
-    }
-    case class Or(x: Expr, y: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            (x.eval(scope), y.eval(scope)) match {
-                case (Success(BoolLit(a)), Success(BoolLit(b))) => Success(BoolLit(a || b))
-                case _ => resolve(x.eval(scope), y.eval(scope))
-            }
-    }
-    case class LT(x: Expr, y: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            (x.eval(scope), y.eval(scope)) match {
-                case (Success(BoolLit(a)), Success(BoolLit(b))) => Success(BoolLit(a < b))
-                case _ => resolve(x.eval(scope), y.eval(scope))
-            }
-    }
-    case class LTE(x: Expr, y: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            (x.eval(scope), y.eval(scope)) match {
-                case (Success(BoolLit(a)), Success(BoolLit(b))) => Success(BoolLit(a <= b))
-                case _ => resolve(x.eval(scope), y.eval(scope))
-            }
-    }
-    case class GT(x: Expr, y: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            (x.eval(scope), y.eval(scope)) match {
-                case (Success(BoolLit(a)), Success(BoolLit(b))) => Success(BoolLit(a > b))
-                case _ => resolve(x.eval(scope), y.eval(scope))
-            }
-    }
-    case class GTE(x: Expr, y: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            (x.eval(scope), y.eval(scope)) match {
-                case (Success(BoolLit(a)), Success(BoolLit(b))) => Success(BoolLit(a >= b))
-                case _ => resolve(x.eval(scope), y.eval(scope))
-            }
-    }
-    case class E(x: Expr, y: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            (x.eval(scope), y.eval(scope)) match {
-                case (Success(BoolLit(a)), Success(BoolLit(b))) => Success(BoolLit(a == b))
-                case _ => resolve(x.eval(scope), y.eval(scope))
-            }
-    }
-    case class NE(x: Expr, y: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            (x.eval(scope), y.eval(scope)) match {
-                case (Success(BoolLit(a)), Success(BoolLit(b))) => Success(BoolLit(a != b))
-                case _ => resolve(x.eval(scope), y.eval(scope))
-            }
-    }
+    case class Add(x: Expr, y: Expr) extends Expr
+    case class Sub(x: Expr, y: Expr) extends Expr
+    case class Mul(x: Expr, y: Expr) extends Expr
+    case class Div(x: Expr, y: Expr) extends Expr
+    case class Mod(x: Expr, y: Expr) extends Expr
+    case class And(x: Expr, y: Expr) extends Expr
+    case class Or(x: Expr, y: Expr) extends Expr
+    case class LT(x: Expr, y: Expr) extends Expr
+    case class LTE(x: Expr, y: Expr) extends Expr
+    case class GT(x: Expr, y: Expr) extends Expr
+    case class GTE(x: Expr, y: Expr) extends Expr
+    case class E(x: Expr, y: Expr) extends Expr
+    case class NE(x: Expr, y: Expr) extends Expr
 
     /*
         Unary Operator
         ⟨unary-oper⟩ ::= ‘!’ | ‘-’ | ‘len’ | ‘ord’ | ‘chr’
     */
-    case class Not(x: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            x.eval(scope) match {
-                case Success(BoolLit(x)) => Success(BoolLit(!x))
-                case default => x.eval(scope)
-            }
-    }
-    case class Neg(x: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            x.eval(scope) match {
-                case Success(IntLit(x)) => Success(IntLit(-x)) // CHECK OVERFLOW
-                case default => x.eval(scope)
-                
-            }
-    }
-    case class Len(x: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            x.eval(scope) match {
-                case Success(ArrayElem(ident, x)) => Success(IntLit(x.length))
-                case default => x.eval(scope)
-            }
-    }
-    case class Ord(x: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            x.eval(scope) match {
-                case Success(CharLit(x)) => Success(IntLit(x.toInt))
-                case default => x.eval(scope)
-            }
-    }
-    case class Chr(x: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = 
-            x.eval(scope) match {
-                case Success(IntLit(x)) => Success(CharLit(x.toChar))
-                case default => x.eval(scope)
-            }
-    }
+    case class Not(x: Expr) extends Expr
+    case class Neg(x: Expr) extends Expr
+    case class Len(x: Expr) extends Expr
+    case class Ord(x: Expr) extends Expr
+    case class Chr(x: Expr) extends Expr
 
     /*
         Atom
     */
-    case class IntLit(x: BigInt) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = Success(this)
-    }
-    case class BoolLit(x: Boolean) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = Success(this)
-    }
-    case class CharLit(x: Char) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = Success(this)
-    }
-    case class StrLit(x: String) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = Success(this)
-    }
-    case class Ident(x: String) extends Expr with Lvalue {
-        def eval(scope: String): Result[List[Error],Expr] = getValueFromTable(x + scope, (0, 0)) match {
-            case Right(PairType(_,_)) => Success(PairLit)
-            case Right(ArrayType(_)) => Success(ArrayElem(this, List(this)))
-            case Right(IntType) => Success(IntLit(0))
-            case Right(BoolType) => Success(BoolLit(true))
-            case Right(CharType) => Success(CharLit('n'))
-            case Right(StringType) => Success(StrLit(" "))
-        }
-    }
-    case class ArrayElem(ident: Ident, x: List[Expr]) extends Expr with Lvalue {
-        def eval(scope: String): Result[List[Error],Expr] = Success(this)
-    }
-    case class Paran(x: Expr) extends Expr {
-        def eval(scope: String): Result[List[Error],Expr] = x.eval(scope)
-    }
-    case object PairLit extends Expr with ParserBridge0[Expr] {
-        def eval(scope: String): Result[List[Error],Expr] = Success(this)
-    }
+    case class IntLit(x: BigInt) extends Expr
+    case class BoolLit(x: Boolean) extends Expr
+    case class CharLit(x: Char) extends Expr
+    case class StrLit(x: String) extends Expr
+    case class Ident(x: String) extends Expr with Lvalue
+    case class ArrayElem(ident: Ident, x: List[Expr]) extends Expr with Lvalue
+    case class Paran(x: Expr) extends Expr
+    case object PairLit extends Expr with ParserBridge0[Expr]
 
     /* Program */
     case class Program(funcs: List[Func], body: Stmt) extends Stmt {
