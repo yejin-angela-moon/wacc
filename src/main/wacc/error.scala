@@ -4,6 +4,13 @@ import parsley.errors.ErrorBuilder
 import ast.Ident
 import ast.Type
 import java.io.File
+import scala.util._
+import parsley.Failure
+import parsley.Success
+import scala.io._
+import scala.util._
+import Errors._
+
 
 
 //NEED get the file, find the corresponding code, get the line, get the index of the line
@@ -16,55 +23,61 @@ object Errors {
     file = f
     filename = f.getName
   }
-
-trait Error {   
-  val errorType : String
-
-  val log: String
-
-  val exitStatus : Int
-
-  val line: Int
-
-  val column: Int
-
- // val errorDescription: String
-
-  def hasError: Boolean = log != ""
-    
-  def resetError(): Unit = ???
-
-  def printErrorMessage() = {
-     // println("Errors detected during compilation! Exit code " + exitStatus + " returned.")
-      println(s"$errorType in $filename ($line, $column)")
-      println("  " + log)
-    
-  }
- 
-}
-
-case class SyntaxError(msg: String) extends Error {
-    override val errorType: String = "Syntax Error"
-    override val log = msg
-
-    override val line: Int = 0
-    override val column: Int = 0
-   /// override val line: Int = 0
-   /// override val column: Int = 1
-
-    override val exitStatus: Int = 100
   
+  trait Error {
+  val errorType: String
+  val log: String
+  val exitStatus: Int
+  val line: Int
+  val column: Int
+  def hasError: Boolean = log != ""
+  def printErrorMessage() = {
+    println(s"$errorType in $filename ($line, $column)")
+    println("  " + log)
+    printSurroundingLines(line)
+  }
+
+  def printSurroundingLines(lineNum: Int): Unit = {
+  val source = Source.fromFile(file)
+  try {
+    val lines = source.getLines().toSeq
+    val startLine = Math.max(1, lineNum - 1)
+    val endLine = Math.min(lines.length, lineNum + 1)
+    for (i <- startLine to endLine) {
+      println(s"|${lines(i - 1)}")
+      if (i == lineNum) {
+        var space = ""
+        var j = 0
+        while (j <= column) {
+           space += " "
+           j += 1
+        }
+        println(s"|$space^")
+      }
+    }
+  } finally {
+    source.close()
+  }
+}
 }
 
-class SemanticError() extends Error {
-    override val errorType = "Semantic Error"
-    override val exitStatus: Int = 200
-    override val line: Int = 0
-    override val column: Int = 0
 
-    override val log: String = "Semantic Error found"
-    
-  }
+// Syntax errors
+case class SyntaxError(msg: String) extends Error{
+  override val errorType: String = "Syntax Error"
+  override val log: String = msg
+  val line: Int = 0
+  val column: Int = 0
+  override val exitStatus: Int = 100
+}
+
+// Semantic errors
+trait SemanticError extends Error {
+  override val errorType: String = "Semantic Error"
+  override val log: String = "semantic"
+  override val exitStatus: Int = 200
+}
+
 
   case class TypeError(description: String, expected: Set[Type], found: Set[Type], pos: (Int, Int)) extends SemanticError {
     override val errorType = "Type Error"
@@ -197,7 +210,9 @@ class SemanticError() extends Error {
     override val log = "Attempt to free non-dynamically allocated memory"
   }
 
+
 }
+
 
 
 

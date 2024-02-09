@@ -125,7 +125,10 @@ object StatementParser {
         IfThenElse("if" ~> `<expr>`, "then" ~> `<stmt>`, "else" ~> `<stmt>` <~ "fi") |
         WhileDo("while" ~> `<expr>`, "do" ~> `<stmt>` <~ "done") |
         BeginEnd("begin" ~> `<stmt>` <~ "end")
-    )(StmtList from ";"))
+    )(StmtList from ";")).map { stmt =>
+        stmt.setPosition(13, 5)
+        stmt
+    }
 
     /* <lvalue> ::= ⟨ident⟩ | ⟨array-elem⟩ | ⟨pair-elem⟩ */
     lazy val `<lvalue>` : Parsley[Lvalue] = atomic(
