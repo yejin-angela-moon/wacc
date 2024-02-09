@@ -7,6 +7,7 @@ stages:
 before_script:
   - apt-get update -y && apt-get install -y curl
   - curl -sSLf https://scala-cli.virtuslab.org/get | sh
+  - source ~/.profile
 
 build-job:
   stage: build
