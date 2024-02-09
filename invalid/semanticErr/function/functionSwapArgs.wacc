@@ -10,7 +10,7 @@
 
 begin
 	int f(int a, bool b) is
-		return 0 
+		return 0
 	end
 	int x = call f(true,1);
 	println x
