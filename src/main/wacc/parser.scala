@@ -98,7 +98,7 @@ object StatementParser {
     /* ⟨func⟩ ::= ⟨type⟩ ⟨ident⟩ ‘(’ ⟨param-list⟩? ‘)’ ‘is’ ⟨stmt⟩ ‘end’ */
     lazy val `<func>` : Parsley[Func] = atomic(
         Func(`<type>`, `<ident>`, "(" ~> `<param-list>` <~ ")",
-                "is" ~> `<stmt>` <~ "end"))
+                "is" ~> `<stmtF>` <~ "end"))
 
     /* <param-list> ::= <param> (',' <param>)* */
     lazy val `<param-list>` : Parsley[ParamList] = atomic(ParamList(sepBy(`<param>`, ",")))
@@ -112,7 +112,10 @@ object StatementParser {
             | ‘print’ ⟨expr ⟩ | ‘println’ ⟨expr ⟩ | ‘if’ ⟨expr ⟩ ‘then’ ⟨stmt ⟩ ‘else’ ⟨stmt ⟩ ‘fi’
             | ‘while’ ⟨expr ⟩ ‘do’ ⟨stmt ⟩ ‘done’ | ‘begin’ ⟨stmt ⟩ ‘end’ | ⟨stmt ⟩ ‘;’ ⟨stmt ⟩
     */
-    lazy val `<stmt>`: Parsley[Stmt] = atomic(chain.left1(
+
+    lazy val `<stmt>`: Parsley[Stmt] = atomic(chain.left1(singleStmt)(StmtList from ";"))
+
+    lazy val singleStmt : Parsley[Stmt]= 
         (Skip from "skip") |
         Declare(`<type>`, `<ident>`, "=" ~> `<rvalue>`) |
         Assign(`<lvalue>`, "=" ~> `<rvalue>`) |
@@ -125,7 +128,14 @@ object StatementParser {
         IfThenElse("if" ~> `<expr>`, "then" ~> `<stmt>`, "else" ~> `<stmt>` <~ "fi") |
         WhileDo("while" ~> `<expr>`, "do" ~> `<stmt>` <~ "done") |
         BeginEnd("begin" ~> `<stmt>` <~ "end")
-    )(StmtList from ";"))
+
+    lazy val `<stmtF>`: Parsley[Stmt] =
+        atomic(StmtList(singleStmt <~ ";", `<stmtF>`)) |
+        atomic(IfThenElse("if" ~> `<expr>`, "then" ~> `<stmtF>`, "else" ~> `<stmtF>` <~ "fi")) |
+        atomic(BeginEnd("begin" ~> `<stmtF>` <~ "end")) |
+        Return("return" ~> `<expr>` ) |
+        Exit("exit" ~> `<expr>`)
+
 
     /* <lvalue> ::= ⟨ident⟩ | ⟨array-elem⟩ | ⟨pair-elem⟩ */
     lazy val `<lvalue>` : Parsley[Lvalue] = atomic(
