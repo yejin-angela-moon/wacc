@@ -7,8 +7,8 @@ stages:
 before_script:
   - apt-get update -y && apt-get install -y curl
   - curl -sSLf https://scala-cli.virtuslab.org/get | sh
-  - sudo chmod +x cs
-  - sudo mv cs /usr/local/bin/scala-cli
+  - chmod +x cs
+  - mv cs /usr/local/bin/scala-cli
   - scala-cli setup
 
 build-job:
