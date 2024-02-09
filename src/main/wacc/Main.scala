@@ -7,6 +7,7 @@ import lexer._
 import parser._
 import Semantic._
 import Errors._
+import java.io._
 
 object Main {
     /* The main program for WACC compiler. Takes in a file written in WACC language and performs
@@ -19,17 +20,18 @@ object Main {
             case Some(prog) => {
                 /* First parse the program into a statement. */
                 parser.parse(prog) match {
-                case Success(x) => 
+                case Success(x) =>
                     println(s"$prog = $x")
                     /* Run the semantic checker on the statement, if parsed successfully without syntax error. */
+                    setFilename(new File(prog))
                     Semantic.semanticAnalysis(x) match {
-                        case Right(_) => 
+                        case Right(_) =>
                             println(s"$prog is semantically valid")
                         case Left(list) => {
                             for(semanticError <- list)
                                 semanticError.printErrorMessage()
                             System.exit(200)
-                        }   
+                        }
                     }
                 /* Exit with code 100 if parsing failed due to syntax error. */
                 case Failure(msg) =>
