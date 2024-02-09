@@ -3,18 +3,21 @@ package wacc
 import scala.collection.mutable.{HashMap}
 import parsley.{Result, Success, Failure}
 import ast._
-// import java.lang.foreign.MemorySegment.Scope
 import SemanticError._
 import Semantic._
 import TypeCheck._
 
 object Semantic {
 
+    /* Table for storing Ident -> Type*/
     var symbolTable = new HashMap[String, Type]
+
+    /* Table for storing Function Ident -> FuncInfo(Type, ParamList) */
     var functionTable = new HashMap[String, FuncInfo]
 
     case class FuncInfo(t: Type, params: ParamList)
 
+    /* Get the Type from the table */
     def getValueFromTable(key: String): Either[List[SemanticError], Type] = {
         @annotation.tailrec
         def search(scopeVar: String): Either[List[SemanticError], Type] = {
@@ -22,7 +25,7 @@ object Semantic {
             case Some(value) => Right(value)
             case None =>
                 val nextScopeVar = scopeVar.lastIndexOf("-") match {
-                case -1 => "" // No more scopes to backtrack
+                case -1 => ""
                 case index => scopeVar.substring(0, index)
                 }
                 if (nextScopeVar.isEmpty) Left(List(SemanticError(s"Unexpected identifier $key")))
@@ -36,17 +39,19 @@ object Semantic {
 
     def stmtCheck(prog: Stmt, scopeLevel: String) :
         Either[List[SemanticError], Unit] = {
-            // println("----------------------------")
-            // println("Checking statement:\n" + prog)
         prog match {
+
+            /* Add the mapping Ident -> Type into the symbol table */
             case Declare(t, ident, rvalue) =>
                 var scopeVar = s"${ident.x}$scopeLevel"
 
+                /* Check if the Ident are already in the table or not */
                 symbolTable.get(scopeVar) match {
-                    case Some(_) => 
+                    case Some(_) =>
                         Left(List(SemanticError(s"Variable ${ident.x} already declared.")))
 
                     case None =>
+                        /* Check if the rvalue has the same type as declared */
                         checkRvalue(rvalue, scopeLevel) match {
                             case Right(value) => {
                                 if(t :> value){
@@ -66,10 +71,13 @@ object Semantic {
                         }
                 }
 
+            /* Check if variable can be reassign */
             case Assign(lvalue, rvalue) =>
+                println(symbolTable)
                 val lResult = checkLvalue(lvalue, scopeLevel)
                 val rResult = checkRvalue(rvalue, scopeLevel)
 
+                /* Check if the type of the lvalue and the rvalue match */
                 (lResult, rResult) match {
                     case (Right(t1), Right(t2)) =>
                         if (t1 :> t2) Right(())
@@ -85,6 +93,7 @@ object Semantic {
                     Left(errors)
                 }
 
+            /* Check if the type of the lvalue and rvalue match */
             case IfThenElse(x, s1, s2) =>
                 findType(x, scopeLevel) match {
                     case Left(error) =>
@@ -106,6 +115,7 @@ object Semantic {
                     }
                 }
 
+            /* Check if the type of the cond is a bool, then check the statement body */
             case WhileDo(x, s) =>
 
                 findType(x, scopeLevel) match {
@@ -119,8 +129,11 @@ object Semantic {
                         stmtCheck(s, scopeLevel + "-w")
                 }
 
+            /* Check the statement of the body */
             case BeginEnd(s) =>
                 stmtCheck(s, scopeLevel + "-b")
+
+            /* Check the statement of the body on the left and right */
             case StmtList(s1, s2) =>
                 val res1 = stmtCheck(s1, scopeLevel)
                 val res2 = stmtCheck(s2, scopeLevel)
@@ -132,12 +145,19 @@ object Semantic {
                     case (Right(_), Left(errors2)) => Left(errors2)
                 }
 
+            /* Skip return nothing */
             case Skip => Right(())
-            case Read(lvalue) => checkLvalue(lvalue, scopeLevel) match {
-                case Right(t) if t == IntType || t == CharType || t == NullType => Right(())
+
+            /* Check the lvalue is either a int, char or a null type */
+            case Read(lvalue) =>
+                println(symbolTable)
+                checkLvalue(lvalue, scopeLevel) match {
+                case Right(t) if t == IntType || t == CharType => Right(())
                 case Right(_) => Left(List(SemanticError("Read expects an Int or Char type")))
                 case Left(value) => Left(value)
             }
+
+            /* Check that the return is inside of a function body and has the same type as what the function defined */
             case Return(x) => (findType(x, scopeLevel), getCurrentFunctionReturnType(scopeLevel)) match {
                 case (Right(t1), Right(t2)) if t2 :> t1 => Right(())
                 case (Right(t1), Right(t2)) => Left(List(SemanticError(s"Return type mismatch\nExpected: $t2 Actual: $t1")))
@@ -145,20 +165,28 @@ object Semantic {
                 case (_, Left(e)) => Left(e)
                 case (Left(e), _) => Left(e)
             }
+
+            /* Check if the expression is an Int */
             case Exit(x) => findType(x, scopeLevel) match {
                 case Right(IntType) => Right(())
                 case Right(_) => Left(List(SemanticError("Exit expects an Int type")))
                 case Left(errors) => Left(errors)
             }
+
+            /* Check that the expression can be compute */
             case Print(x) => findType(x, scopeLevel) match {
                 case Right(_) => Right(())
                 case Left(errors) => Left(errors)
             }
-            case Println(x) => 
+
+            /* Check the statement of the body */
+            case Println(x) =>
                 findType(x, scopeLevel) match {
                 case Right(_) => Right(())
                 case Left(errors) => Left(errors)
             }
+
+            /* Check if the expresssion is an Array, a Pair or Null */
             case Free(x) => findType(x, scopeLevel) match {
                 case Right(ArrayType(_)) | Right(PairType(_,_)) | Right(NullType) => Right(()) 
                 case Left(errors) => Left(errors)
@@ -177,14 +205,14 @@ object Semantic {
             case Fst(lvalue) => checkLvalue(lvalue, scopeLevel) match {
                 case Right(PairType(a, b)) => Right(fromPairElemType(a))
                 case Right(NullType) => Right(NullType)
-                case _ => Left(List(SemanticError("Can only use fst on pair type"))) 
+                case _ => Left(List(SemanticError("Can only use fst on pair type")))
             }
             case Snd(lvalue) => checkLvalue(lvalue, scopeLevel) match {
-                case Right(PairType(a, b)) => 
+                case Right(PairType(a, b)) =>
                     print("the value of b is " + b)
                     Right(fromPairElemType(b))
                 case Right(NullType) => Right(NullType)
-                case _ => Left(List(SemanticError("Can only use snd on pair type"))) 
+                case _ => Left(List(SemanticError("Can only use snd on pair type")))
             }
             }
         }
@@ -192,8 +220,11 @@ object Semantic {
 
     def checkRvalue(r : Rvalue, scopeLevel: String) : Either[List[SemanticError], Type] = {
         r match{
+            /* Check that every element have the same type and return that type */
             case ArrayLit(exprList) =>
                 checkArrayList(exprList.getOrElse(Nil), scopeLevel)
+
+            /* Check the statement of the body */
             case NewPair(x1, x2) =>
 
                 for {
@@ -214,13 +245,12 @@ object Semantic {
 
                 }
             case Fst(lvalue) => 
-                println("the lvalue is " + lvalue)
+                
                 checkLvalue(lvalue, scopeLevel) match {
+                case Right(PairElemType1) => Left(List(SemanticError("err"))) 
                 case Right(PairType(a, b)) => Right(fromPairElemType(a))
                 case Right(NullType) => Right(NullType)
                 case a => 
-                    println(a)
-                    println(symbolTable)
                     Left(List(SemanticError("Can only use fst on pair type"))) 
             }
             case Snd(lvalue) => checkLvalue(lvalue, scopeLevel) match {
