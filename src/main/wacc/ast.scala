@@ -56,16 +56,12 @@ object ast {
 
     /* Program */
     case class Program(funcs: List[Func], body: Stmt) extends Stmt {
-
-      override val pos: (Int, Int) = (-1, -1)
-
+      override var pos: (Int, Int) = (-1, -1)
     }
 
     /* Function */
     case class Func(t: Type, ident: Ident, list: ParamList, body: Stmt) extends Stmt {
-
-      override val pos: (Int, Int) = (-1, -1)
-
+      override var pos: (Int, Int) = (-1, -1)
     }
 
     /* Parameter List */
@@ -75,70 +71,63 @@ object ast {
     case class Param(t: Type, ident: Ident)
 
     /* Statement */
-    /* Statement */
     sealed trait Stmt {
-        val pos: (Int, Int)
+        var pos: (Int, Int)
+        def setPosition(line: Int, column: Int): Unit = {
+            pos = (line, column)
+        }
     }
+
     case object Skip extends Stmt with ParserBridge0[Stmt] {
-        val pos: (Int, Int) = (-1, -1)
+        var pos: (Int, Int) = (-1, -1)
     }
+
     case class Declare(t: Type, ident: Ident, rvalue: Rvalue) extends Stmt {
-
-      override val pos: (Int, Int) = (-1, -1)
-
+        override var pos: (Int, Int) = (-1, -1)
     }
+
     case class Assign(lvalue: Lvalue, rvalue: Rvalue) extends Stmt {
-
-      override val pos: (Int, Int) = (-1, -1)
-
+        override var pos: (Int, Int) = (-1, -1)
     }
+
     case class Read(lvalue: Lvalue) extends Stmt {
-
-      override val pos: (Int, Int) = (-1, -1)
-
+        override var pos: (Int, Int) = (-1, -1)
     }
+
     case class Free(x: Expr) extends Stmt {
-      override val pos: (Int, Int) = (-1, -1)
+        override var pos: (Int, Int) = (-1, -1)
     }
+
     case class Return(x: Expr) extends Stmt {
-
-      override val pos: (Int, Int) = (-1, -1)
-
+        override var pos: (Int, Int) = (-1, -1)
     }
+
     case class Exit(x: Expr) extends Stmt {
-
-      override val pos: (Int, Int) = (-1, -1)
-
+        override var pos: (Int, Int) = (-1, -1)
     }
+    
     case class Print(x: Expr) extends Stmt {
-
-      override val pos: (Int, Int) = (-1, -1)
-
+        override var pos: (Int, Int) = (-1, -1)
     }
+
     case class Println(x: Expr) extends Stmt {
-
-      override val pos: (Int, Int) = (-1, -1)
-
+        override var pos: (Int, Int) = (-1, -1)
     }
+
     case class IfThenElse(x: Expr, s1: Stmt, s2: Stmt) extends Stmt {
-
-      override val pos: (Int, Int) = (-1, -1)
-
+        override var pos: (Int, Int) = (-1, -1)
     }
+
     case class WhileDo(x: Expr, s:Stmt) extends Stmt {
-
-      override val pos: (Int, Int) = (-1, -1)
-
+        override var pos: (Int, Int) = (-1, -1)
     }
+
     case class BeginEnd(s: Stmt) extends Stmt {
-
-      override val pos: (Int, Int) = (-1, -1)
-
+        override var pos: (Int, Int) = (-1, -1)
     }
+
     case class StmtList(s1: Stmt, s2: Stmt) extends Stmt {
-
-      override val pos: (Int, Int) = (-1, -1)
-
+        override var pos: (Int, Int) = (-1, -1)
     }
 
     /* Lvalue */
