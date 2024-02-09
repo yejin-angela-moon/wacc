@@ -218,10 +218,18 @@ object ast {
     }
 
     /* Program */
-    case class Program(funcs: List[Func], body: Stmt) extends Stmt
+    case class Program(funcs: List[Func], body: Stmt) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
 
     /* Function */
-    case class Func(t: Type, ident: Ident, list: ParamList, body: Stmt) extends Stmt
+    case class Func(t: Type, ident: Ident, list: ParamList, body: Stmt) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
 
     /* Parameter List */
     case class ParamList(params: List[Param])
@@ -230,20 +238,71 @@ object ast {
     case class Param(t: Type, ident: Ident)
 
     /* Statement */
-    sealed trait Stmt
-    case object Skip extends Stmt with ParserBridge0[Stmt]
-    case class Declare(t: Type, ident: Ident, rvalue: Rvalue) extends Stmt
-    case class Assign(lvalue: Lvalue, rvalue: Rvalue) extends Stmt
-    case class Read(lvalue: Lvalue) extends Stmt
-    case class Free(x: Expr) extends Stmt
-    case class Return(x: Expr) extends Stmt
-    case class Exit(x: Expr) extends Stmt
-    case class Print(x: Expr) extends Stmt
-    case class Println(x: Expr) extends Stmt
-    case class IfThenElse(x: Expr, s1: Stmt, s2: Stmt) extends Stmt
-    case class WhileDo(x: Expr, s:Stmt) extends Stmt
-    case class BeginEnd(s: Stmt) extends Stmt
-    case class StmtList(s1: Stmt, s2: Stmt) extends Stmt
+    /* Statement */
+    sealed trait Stmt {
+        val pos: (Int, Int)
+    }
+    case object Skip extends Stmt with ParserBridge0[Stmt] {
+        val pos: (Int, Int) = (-1, -1)
+    }
+    case class Declare(t: Type, ident: Ident, rvalue: Rvalue) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class Assign(lvalue: Lvalue, rvalue: Rvalue) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class Read(lvalue: Lvalue) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class Free(x: Expr) extends Stmt {
+      override val pos: (Int, Int) = (-1, -1)
+    }
+    case class Return(x: Expr) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class Exit(x: Expr) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class Print(x: Expr) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class Println(x: Expr) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class IfThenElse(x: Expr, s1: Stmt, s2: Stmt) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class WhileDo(x: Expr, s:Stmt) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class BeginEnd(s: Stmt) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
+    case class StmtList(s1: Stmt, s2: Stmt) extends Stmt {
+
+      override val pos: (Int, Int) = (-1, -1)
+
+    }
 
     /* Lvalue */
     sealed trait Lvalue

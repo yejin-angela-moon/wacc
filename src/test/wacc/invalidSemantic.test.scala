@@ -43,7 +43,7 @@ class InvalidSemantic extends AnyFunSuite {
 
 object TestSemantics {
   def testSemantics(f: File) : String = {
-    Errors.setCurrentFilename(f.getPath())
+    Errors.setFilename(f)
     parser.parse(f.getPath()) match {
       case Success(prog) => Semantic.semanticAnalysis(prog) match {
         case Right(_) => "success"
