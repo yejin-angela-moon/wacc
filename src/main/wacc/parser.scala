@@ -4,7 +4,7 @@ import parsley.{Parsley, Result}
 import parsley.{Success, Failure}
 import parsley.expr.chain
 import parsley.Parsley.{atomic, many, some, notFollowedBy, lookAhead}
-import parsley.combinator.{sepBy, sepBy1, countSome, manyN}
+import parsley.combinator.{sepBy, sepBy1, countSome, manyN, manyTill}
 import parsley.expr.{precedence, SOps, InfixL, InfixR, InfixN, Prefix, Atoms}
 import parsley.syntax.character.charLift
 import parsley.character.digit
@@ -93,12 +93,12 @@ object StatementParser {
 
     /* ⟨program⟩ ::= ‘begin’ ⟨func⟩* ⟨stmt⟩ ‘end’ */
     lazy val `<prog>` : Parsley[Program] = atomic(
-        Program("begin" ~> many(`<func>`), `<stmt>` <~ "end"))
+        Program("begin" ~> many(`<func>`), `<stmtList>` <~ "end"))
 
     /* ⟨func⟩ ::= ⟨type⟩ ⟨ident⟩ ‘(’ ⟨param-list⟩? ‘)’ ‘is’ ⟨stmt⟩ ‘end’ */
     lazy val `<func>` : Parsley[Func] = atomic(
         Func(`<type>`, `<ident>`, "(" ~> `<param-list>` <~ ")",
-                "is" ~> `<stmtF>` <~ "end"))
+                "is" ~> `<funcStmtList>` <~ "end"))
 
     /* <param-list> ::= <param> (',' <param>)* */
     lazy val `<param-list>` : Parsley[ParamList] = atomic(ParamList(sepBy(`<param>`, ",")))
@@ -113,28 +113,38 @@ object StatementParser {
             | ‘while’ ⟨expr ⟩ ‘do’ ⟨stmt ⟩ ‘done’ | ‘begin’ ⟨stmt ⟩ ‘end’ | ⟨stmt ⟩ ‘;’ ⟨stmt ⟩
     */
 
-    lazy val `<stmt>`: Parsley[Stmt] = atomic(chain.left1(singleStmt)(StmtList from ";"))
+    lazy val `<funcStmtList>` : Parsley[List[Stmt]] = atomic(manyTill(`<stmt>` <~ ";", atomic(`<funcStmt>` <~ notFollowedBy(";"))))
 
-    lazy val singleStmt : Parsley[Stmt]= 
+    lazy val `<funcStmt>` : Parsley[Stmt] = 
+        atomic(`<endStmt>`) |
+        IfThenElse("if" ~> `<expr>`, "then" ~> `<funcStmtList>`, "else" ~> `<funcStmtList>` <~ "fi") |
+        WhileDo("while" ~> `<expr>`, "do" ~> `<funcStmtList>` <~ "done") 
+
+    lazy val `<stmtList>` : Parsley[List[Stmt]] = atomic(sepBy1(`<stmt>`, ";"))
+
+    lazy val `<stmt>` : Parsley[Stmt] = 
+        atomic(`<endStmt>`) |
         (Skip from "skip") |
         Declare(`<type>`, `<ident>`, "=" ~> `<rvalue>`) |
         Assign(`<lvalue>`, "=" ~> `<rvalue>`) |
         Read("read" ~> `<lvalue>`) |
         Free("free" ~> `<expr>`) |
-        Return("return" ~> `<expr>` ) |
-        Exit("exit" ~> `<expr>`) |
         Print("print" ~> `<expr>`) |
         Println("println" ~> `<expr>`) |
-        IfThenElse("if" ~> `<expr>`, "then" ~> `<stmt>`, "else" ~> `<stmt>` <~ "fi") |
-        WhileDo("while" ~> `<expr>`, "do" ~> `<stmt>` <~ "done") |
-        BeginEnd("begin" ~> `<stmt>` <~ "end")
+        IfThenElse("if" ~> `<expr>`, "then" ~> `<stmtList>`, "else" ~> `<stmtList>` <~ "fi") |
+        WhileDo("while" ~> `<expr>`, "do" ~> `<stmtList>` <~ "done") |
+        BeginEnd("begin" ~> `<stmtList>` <~ "end")
 
-    lazy val `<stmtF>`: Parsley[Stmt] =
-        atomic(StmtList(singleStmt <~ ";", `<stmtF>`)) |
-        atomic(IfThenElse("if" ~> `<expr>`, "then" ~> `<stmtF>`, "else" ~> `<stmtF>` <~ "fi")) |
-        atomic(BeginEnd("begin" ~> `<stmtF>` <~ "end")) |
+    lazy val `<endStmt>` : Parsley[Stmt] = 
         Return("return" ~> `<expr>` ) |
-        Exit("exit" ~> `<expr>`)
+        Exit("exit" ~> `<expr>`) 
+
+    // lazy val `<stmtF>`: Parsley[Stmt] =
+    //     atomic(StmtList(singleStmt <~ ";", `<stmtF>`)) |
+    //     atomic(IfThenElse("if" ~> `<expr>`, "then" ~> `<stmtF>`, "else" ~> `<stmtF>` <~ "fi")) |
+    //     atomic(BeginEnd("begin" ~> `<stmtF>` <~ "end")) |
+    //     Return("return" ~> `<expr>` ) |
+    //     Exit("exit" ~> `<expr>`)
 
 
     /* <lvalue> ::= ⟨ident⟩ | ⟨array-elem⟩ | ⟨pair-elem⟩ */

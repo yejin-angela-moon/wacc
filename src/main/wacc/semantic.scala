@@ -106,8 +106,8 @@ object Semantic {
 
                     case Right(_) =>
                         /* Add scope level "-i" for an IF block, and "-e" for an ELSE block. */
-                        val res1 = stmtCheck(s1, scopeLevel + "-i")
-                        val res2 = stmtCheck(s2, scopeLevel + "-e")
+                        val res1 = stmtListCheck(s1, scopeLevel + "-i")
+                        val res2 = stmtListCheck(s2, scopeLevel + "-e")
                         /* IfThenElse statement is only valid if both IF and ELSE blocks
                         are valid. */
                         (res1, res2) match {
@@ -128,25 +128,26 @@ object Semantic {
                         Left((List(TypeError("Condition", Set(BoolType), Set(t), prog.pos))))
                     /* Add scope level "-w" for a WHILE block if valid. */
                     case Right(_) =>
-                        stmtCheck(s, scopeLevel + "-w")
+                        stmtListCheck(s, scopeLevel + "-w")
                 }
 
             /* Check the statement of a Begin-End block. Distinguished from the global scope "-g"
             where the program is wrapped in Begin-End. */
             case BeginEnd(s) =>
-                stmtCheck(s, scopeLevel + "-b")
+                stmtListCheck(s, scopeLevel + "-b")
+                // stmtCheck(s, scopeLevel + "-b")
 
-            /* Check the statement of the body on the left and right */
-            case StmtList(s1, s2) =>
-                val res1 = stmtCheck(s1, scopeLevel)
-                val res2 = stmtCheck(s2, scopeLevel)
+            // /* Check the statement of the body on the left and right */
+            // case StmtList(s1, s2) =>
+            //     val res1 = stmtCheck(s1, scopeLevel)
+            //     val res2 = stmtCheck(s2, scopeLevel)
 
-                (res1, res2) match {
-                    case (Right(_), Right(_)) => Right(())
-                    case (Left(errors1), Left(errors2)) => Left(errors1 ++ errors2)
-                    case (Left(errors1), Right(_)) => Left(errors1)
-                    case (Right(_), Left(errors2)) => Left(errors2)
-                }
+            //     (res1, res2) match {
+            //         case (Right(_), Right(_)) => Right(())
+            //         case (Left(errors1), Left(errors2)) => Left(errors1 ++ errors2)
+            //         case (Left(errors1), Right(_)) => Left(errors1)
+            //         case (Right(_), Left(errors2)) => Left(errors2)
+            //     }
 
             /* Skip return nothing. Always valid. */
             case Skip => Right(())
@@ -206,6 +207,13 @@ object Semantic {
 
      }
 
+    def stmtListCheck(stmts: List[Stmt], scopeLevel: String) :
+        Either[List[SemanticError], Unit] = {
+        stmts.partitionMap((s) => stmtCheck(s, scopeLevel)) match {
+            case (errs, correct) => if (errs.flatten.isEmpty) Right(()) else Left(errs.flatten)
+            case default => Right(())
+        }
+    }
 
     /* Determine the type of the Lvalue in the given scope. */
     def checkLvalue(lvalue: Lvalue, scopeLevel: String, pos: (Int, Int)):
@@ -347,7 +355,7 @@ object Semantic {
                         }
                 }
                 /* Check the validity of the function body. */
-                stmtCheck(func.body, "-" + func.ident.x + "-g")
+                stmtListCheck(func.body, "-" + func.ident.x + "-g")
             }
         }
     }
@@ -379,7 +387,7 @@ object Semantic {
         prog match {
             case Program(funcs, body) =>
                 /* Initiate semantic check starting from scope level "-g", global. */
-                (checkFuncsList(funcs, prog.pos), stmtCheck(body, "-g")) match {
+                (checkFuncsList(funcs, prog.pos), stmtListCheck(body, "-g")) match {
                     case (Right(_), Right(_)) => Right(())
                     case (Left(err1), Left(err2)) => Left(err1 ++ err2)
                     case (Left(errs), _) => Left(errs)

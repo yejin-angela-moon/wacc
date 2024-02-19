@@ -55,12 +55,12 @@ object ast {
     case object PairLit extends Expr with ParserBridge0[Expr]
 
     /* Program */
-    case class Program(funcs: List[Func], body: Stmt) extends Stmt {
+    case class Program(funcs: List[Func], body: List[Stmt]) extends Stmt {
       override var pos: (Int, Int) = (-1, -1)
     }
 
     /* Function */
-    case class Func(t: Type, ident: Ident, list: ParamList, body: Stmt) extends Stmt {
+    case class Func(t: Type, ident: Ident, list: ParamList, body: List[Stmt]) extends Stmt {
       override var pos: (Int, Int) = (-1, -1)
     }
 
@@ -114,21 +114,21 @@ object ast {
         override var pos: (Int, Int) = (-1, -1)
     }
 
-    case class IfThenElse(x: Expr, s1: Stmt, s2: Stmt) extends Stmt {
+    case class IfThenElse(x: Expr, s1: List[Stmt], s2: List[Stmt]) extends Stmt {
         override var pos: (Int, Int) = (-1, -1)
     }
 
-    case class WhileDo(x: Expr, s:Stmt) extends Stmt {
+    case class WhileDo(x: Expr, s:List[Stmt]) extends Stmt {
         override var pos: (Int, Int) = (-1, -1)
     }
 
-    case class BeginEnd(s: Stmt) extends Stmt {
+    case class BeginEnd(s: List[Stmt]) extends Stmt {
         override var pos: (Int, Int) = (-1, -1)
     }
 
-    case class StmtList(s1: Stmt, s2: Stmt) extends Stmt {
-        override var pos: (Int, Int) = (-1, -1)
-    }
+    // case class StmtList(s1: Stmt, s2: Stmt) extends Stmt {
+    //     override var pos: (Int, Int) = (-1, -1)
+    // }
 
     /* Lvalue */
     sealed trait Lvalue
@@ -220,8 +220,8 @@ object ast {
     object ArrayElem extends ParserBridge2[Ident, List[Expr], ArrayElem]
     object PairType extends ParserBridge2[PairElemType, PairElemType, PairType]
 
-    object Program extends ParserBridge2[List[Func], Stmt, Program]
-    object Func extends ParserBridge4[Type, Ident, ParamList, Stmt, Func]
+    object Program extends ParserBridge2[List[Func], List[Stmt], Program]
+    object Func extends ParserBridge4[Type, Ident, ParamList, List[Stmt], Func]
     object ParamList extends ParserBridge1[List[Param], ParamList]
     object Param extends ParserBridge2[Type, Ident, Param]
     object Declare extends ParserBridge3[Type, Ident, Rvalue, Declare]
@@ -232,10 +232,10 @@ object ast {
     object Exit extends ParserBridge1[Expr, Exit]
     object Print extends ParserBridge1[Expr, Print]
     object Println extends ParserBridge1[Expr, Println]
-    object IfThenElse extends ParserBridge3[Expr, Stmt, Stmt, IfThenElse]
-    object WhileDo extends ParserBridge2[Expr, Stmt, WhileDo]
-    object BeginEnd extends ParserBridge1[Stmt, BeginEnd]
-    object StmtList extends ParserBridge2[Stmt, Stmt, StmtList]
+    object IfThenElse extends ParserBridge3[Expr, List[Stmt], List[Stmt], IfThenElse]
+    object WhileDo extends ParserBridge2[Expr, List[Stmt], WhileDo]
+    object BeginEnd extends ParserBridge1[List[Stmt], BeginEnd]
+    //object StmtList extends ParserBridge2[Stmt, Stmt, StmtList]
 
     object Fst extends ParserBridge1[Lvalue, Fst]
     object Snd extends ParserBridge1[Lvalue, Snd]
