@@ -70,14 +70,14 @@ object Errors {
         val column: Int = 0
         override val exitStatus: Int = 100
     }
-    
+
     // Semantic errors
     trait SemanticError extends Error {
         override val errorType: String = "Semantic Error"
         override val log: String = "semantic"
         override val exitStatus: Int = 200
     }
-    
+
     // Define type error 
     case class TypeError(description: String, expected: Set[Type], found: Set[Type], pos: (Int, Int)) extends SemanticError {
         override val errorType = "[Semantic] Type Error"

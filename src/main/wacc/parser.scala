@@ -92,8 +92,8 @@ object TypeParser {
 object StatementParser {
 
     /* ⟨program⟩ ::= ‘begin’ ⟨func⟩* ⟨stmt⟩ ‘end’ */
-    lazy val `<prog>` : Parsley[Program] = atomic(
-        Program("begin" ~> many(`<func>`), `<stmtList>` <~ "end"))
+    lazy val `<prog>` : Parsley[Program] =
+        Program("begin" ~> many(`<func>`), `<stmtList>` <~ "end")
 
     /* ⟨func⟩ ::= ⟨type⟩ ⟨ident⟩ ‘(’ ⟨param-list⟩? ‘)’ ‘is’ ⟨stmt⟩ ‘end’ */
     lazy val `<func>` : Parsley[Func] = atomic(
@@ -113,16 +113,12 @@ object StatementParser {
             | ‘while’ ⟨expr ⟩ ‘do’ ⟨stmt ⟩ ‘done’ | ‘begin’ ⟨stmt ⟩ ‘end’ | ⟨stmt ⟩ ‘;’ ⟨stmt ⟩
     */
 
-    lazy val `<funcStmtList>` : Parsley[List[Stmt]] = atomic(manyTill(`<stmt>` <~ ";", atomic(`<funcStmt>` <~ notFollowedBy(";"))))
+    lazy val `<funcStmtList>` : Parsley[List[Stmt]] =
+        sepBy1(`<stmt>`, ";").filter(missingReturn)
 
-    lazy val `<funcStmt>` : Parsley[Stmt] = 
-        atomic(`<endStmt>`) |
-        IfThenElse("if" ~> `<expr>`, "then" ~> `<funcStmtList>`, "else" ~> `<funcStmtList>` <~ "fi") |
-        WhileDo("while" ~> `<expr>`, "do" ~> `<funcStmtList>` <~ "done") 
+    lazy val `<stmtList>` : Parsley[List[Stmt]] = sepBy1(`<stmt>`, ";")
 
-    lazy val `<stmtList>` : Parsley[List[Stmt]] = atomic(sepBy1(`<stmt>`, ";"))
-
-    lazy val `<stmt>` : Parsley[Stmt] = 
+    lazy val `<stmt>` : Parsley[Stmt] =
         atomic(`<endStmt>`) |
         (Skip from "skip") |
         Declare(`<type>`, `<ident>`, "=" ~> `<rvalue>`) |

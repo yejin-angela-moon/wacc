@@ -5,13 +5,14 @@ import parsley.Success
 import java.security.Identity
 import scala.collection.View.Empty
 import java.security.cert.TrustAnchor
+import javax.net.ssl.TrustManager
 
 object ast {
     import parsley.generic._
     import Semantic.getValueFromTable
     import ast._
 
-    sealed trait Expr extends Rvalue with Lvalue 
+    sealed trait Expr extends Rvalue with Lvalue
 
     /*
         Binary Operator
@@ -255,6 +256,16 @@ object ast {
         def apply(ident: Ident, args: List[Expr]) = args match {
             case Nil => ident
             case args => ArrayElem(ident, args)
+        }
+    }
+
+    def missingReturn(listStmt: List[Stmt]) : Boolean = {
+        listStmt.last match {
+            case Return(_) | Exit(_) => true
+            case IfThenElse(x, s1, s2) => missingReturn(s1) && missingReturn(s2)
+            case WhileDo(x, s) => missingReturn(s)
+            case BeginEnd(s) => missingReturn(s)
+            case _ => false
         }
     }
 }
