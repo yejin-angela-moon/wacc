@@ -18,6 +18,7 @@ object ast {
         ⟨binary-oper⟩ ::= ‘*’ | ‘/’ | ‘%’ | ‘+’ | ‘-’ | ‘>’ | ‘>=’ | ‘<’ | ‘<=’
                         | ‘==’ | ‘!=’ | ‘&&’ | ‘||’
     */
+
     case class Add(x: Expr, y: Expr) extends Expr
     case class Sub(x: Expr, y: Expr) extends Expr
     case class Mul(x: Expr, y: Expr) extends Expr
